@@ -1,0 +1,83 @@
+$Id: $
+
+NOTE: this document applies to the Xplico source releases.
+
+Installation
+============
+
+0. This is software. Beware.
+
+1. Install recode application
+
+2. If you wish to build Xplico, make sure you have libpcap
+   installed.  The latest "official" version can be found at
+
+        http://www.tcpdump.org .
+
+3. If you wish to build Xplico, make sure you have libsqlite version 2
+   installed.  The latest "official" version can be found at
+
+        http://www.sqlite.org .
+
+4. If you wish to decode VoIP with Xplico, make sure you have sox ans lame installed. 
+   The latest "official" versions can be found at
+
+        http://sox.sourceforge.net/
+        http://lame.sourceforge.net/
+
+5. If you want (not necessary) that Xplico produces the geographical map of the reconstruction,
+   then you must download GeoIP-1.4.5.tar.gz, and from the SAME directory where you unpack xplico
+   you have to unpack GeoIP source code. After that you has to configure and compile GeoIP:
+        cd GeoIP-1.4.6
+        ./configure
+        make
+   No need to install GeoIP.
+   In the end, download and unpack in the directory 'xplico' the GeoLite City database. Remember to
+   unpack the db.
+        http://www.maxmind.com/app/c (GeoIP C API)
+        http://geolite.maxmind.com/download/geoip/database/GeoLiteCity.dat.gz (GeoLite City Binary Format)
+
+6. Compile nDPI library. From the SAME directory where you unpack xplico:
+     svn co https://svn.ntop.org/svn/ntop/trunk/nDPI
+     cd nDPI
+     ./configure --with-pic
+     make
+
+7. Run 'make' in the Xplico distribution directory. Hopefully, you won't run into any problems.
+
+8. After running 'make', you will see xplico binary and modules directory.
+
+9. If you wish to decode network printer job, make sure you have Ghostpcl. The latest "official" 
+   version can be found at
+
+        http://www.ghostscript.com/awki/Ghostpcl .
+
+   Copy "pcl6" in Xplico home directory (in the same directory of xplico binary).
+
+10. If you wish to decode RTP, SIP, MEGACO, H323, MGCP... VoIP audio codec, make sure you have videosnarf-0.62 compiled and patched with videosnarf_xplico.patch ( http://projects.xplico.org/patch/videosnarf_xplico.patch.gz ).
+
+   Copy "videosnarf" in Xplico home directory (in the same directory of xplico binary).
+   
+11. Run './xplico' and make sure that everything are working. You must have root privileges in order to capture live data.
+
+12. At this point you have Xplico in console mode, see README for use it.
+
+13. If you use Xplico GUI it requires Apache, PHP and Perl. If you use Xplico in console mode
+   it isn't necesary this software, and you can skeep this point and others.
+
+14. Run 'make install'. Change the permisions of /opt/xplico, /opt/xplico/cfg and /opt/xplico/xi directories to permit that Apache user (PHP program) can create a subdirectory inside /opt/xplico
+    Also change the permisions of all files in /opt/xplico/cfg to read and write by Apache.
+
+15. With root permission run:
+    /opt/xplico/script/sqlite_demo.sh
+
+16. To configure Apache you can use the (example) configuration file: /opt/xplico/cfg/apache_xi
+
+17. Enable proxy in Firefox. The proxy IP is the IP of machine where you have installed Xplico and port is 80 (Apache port).
+
+18. The url to view Xplico Interface is: http://IP
+    If you use the machine name and not IP it is possible that you don't enter in Web Interface
+
+19. And now: Enjoy.
+
+If you have trouble with the build or installation process, you can contact us.
