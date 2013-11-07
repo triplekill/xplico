@@ -212,9 +212,8 @@ install: installcp
 	chmod 777 $(INSTALL_DIR)/cfg
 	chmod a+w $(INSTALL_DIR)/cfg/*
 	chmod -R 777 $(INSTALL_DIR)/xi/app/tmp
-	mkdir -p $(DESTDIR)/etc/apache2/sites-available/
-	mkdir -p $(DESTDIR)/etc/apache2/sites-enabled/
-	cp $(INSTALL_DIR)/cfg/apache_xi $(DESTDIR)/etc/apache2/sites-available/xplico
+	mkdir -p $(DESTDIR)/etc/httpd/conf/extra
+	cp $(INSTALL_DIR)/cfg/apache_xi $(DESTDIR)/etc/httpd/conf/extra/httpd-xplico.conf
 endif
 
 
