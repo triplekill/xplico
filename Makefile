@@ -216,6 +216,8 @@ install: installcp
 	cp $(INSTALL_DIR)/cfg/apache_xi $(DESTDIR)/etc/httpd/conf/extra/httpd-xplico.conf
 	mkdir -p $(DESTDIR)/opt/xplico/xi/app/tmp/cache
 	chmod -R 777 $(DESTDIR)/opt/xplico/xi/app/tmp/cache
+	mkdir -p $(DESTDIR)/usr/lib/systemd/system
+	cp $(INSTALL_DIR)/debian/xplico.service $(DESTDIR)/usr/lib/systemd/system
 endif
 
 
