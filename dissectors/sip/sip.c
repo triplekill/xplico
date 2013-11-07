@@ -831,7 +831,7 @@ static int SipCallPei(sip_call *call)
         fclose(call->cmd_fp);
 
     /* audio decoding */
-    sprintf(cmd, "./videosnarf -i %s -o %s 2>/dev/null 1>/dev/null", call->cr.file_name, call->cr.file_name);
+    sprintf(cmd, "videosnarf -i %s -o %s 2>/dev/null 1>/dev/null", call->cr.file_name, call->cr.file_name);
     ret = system(cmd);
     if (ret == -1) {
         LogPrintf(LV_WARNING, "videosnarf failed");
@@ -839,7 +839,7 @@ static int SipCallPei(sip_call *call)
     else if (WEXITSTATUS(ret) != 0) {
         LogPrintf(LV_WARNING, "videosnarf crash");
     }
-    sprintf(cmd, "./videosnarf -i %s -o %s 2>/dev/null 1>/dev/null", call->cd.file_name, call->cd.file_name);
+    sprintf(cmd, "videosnarf -i %s -o %s 2>/dev/null 1>/dev/null", call->cd.file_name, call->cd.file_name);
     ret = system(cmd);
     if (check_vs) {
         if (ret == -1) {

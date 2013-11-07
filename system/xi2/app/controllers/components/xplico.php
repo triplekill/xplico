@@ -243,7 +243,7 @@ class XplicoComponent extends Object
     }
 
     function getVideosnarfVersion() {
-        return exec ('/opt/xplico/bin/videosnarf | grep Starting | cut -b 20,21,22,23,24,25,26,27');
+        return exec ('/usr/bin/videosnarf | grep Starting | cut -b 20,21,22,23,24,25,26,27');
     }
 
     function isChecksumValidationActivated() {
