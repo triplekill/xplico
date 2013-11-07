@@ -47,9 +47,9 @@
 #include "pei.h"
 
 /* nDPI library */
-#include "libndpi/ndpi_api.h"
-#include "libndpi/ndpi_main.h"
-#include "libndpi/ndpi_structs.h"
+#include <libndpi/ndpi_api.h>
+#include <libndpi/ndpi_main.h>
+#include <libndpi/ndpi_structs.h>
 
 
 #define GRB_FILE           0           /* to put (or not) data in to a pcap file */
