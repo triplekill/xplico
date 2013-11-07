@@ -217,7 +217,7 @@ install: installcp
 	mkdir -p $(DESTDIR)/opt/xplico/xi/app/tmp/cache
 	chmod -R 777 $(DESTDIR)/opt/xplico/xi/app/tmp/cache
 	mkdir -p $(DESTDIR)/usr/lib/systemd/system
-	cp $(INSTALL_DIR)/debian/xplico.service $(DESTDIR)/usr/lib/systemd/system
+	cp debian/xplico.service $(DESTDIR)/usr/lib/systemd/system/
 endif
 
 
