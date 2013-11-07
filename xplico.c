@@ -351,7 +351,7 @@ int main(int argc, char *argv[])
 
     /* Geo Ip localization init */
     if (GeoIPLocInit() == -1) {
-        printf("Download GeoLiteCity.dat from http://geolite.maxmind.com/download/geoip/database/ and gunzip it into /opt/xplico/\n");
+        printf("Download GeoLiteCity.dat from http://geolite.maxmind.com/download/geoip/database/ and gunzip it into /usr/share/GeoIP/\n");
         if (!(help || capt == FALSE))
             sleep(2);
     }

@@ -185,14 +185,9 @@ installcp: all
 	cp -a config/mfile_cli_fix.cfg $(INSTALL_DIR)/cfg/mfile_cli.cfg
 	cp -a config/mpaltalk_install_*.cfg $(INSTALL_DIR)/cfg
 	cp -a config/mpaltalk_cli_fix.cfg $(INSTALL_DIR)/cfg/mpaltalk_cli.cfg
-ifeq ($(wildcard GeoLiteCity.dat), GeoLiteCity.dat)
-	cp -a GeoLiteCity.dat $(INSTALL_DIR)/GeoLiteCity.dat
-endif
+
 ifeq ($(wildcard pcl6), pcl6)
 	cp -a pcl6 $(INSTALL_DIR)/bin
-endif
-ifeq ($(wildcard videosnarf), videosnarf)
-	cp -a videosnarf $(INSTALL_DIR)/bin
 endif
 # manipulators
 	$(MAKE) -C manipulators install

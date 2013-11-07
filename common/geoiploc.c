@@ -40,25 +40,15 @@ int GeoIPLocInit(void)
 {
     /* try to open an db */
     giv6 = NULL;
-    gi = GeoIP_open("/opt/xplico/GeoLiteCity.dat", GEOIP_MEMORY_CACHE);
-    if (gi == NULL) {
-        gi = GeoIP_open("GeoLiteCity.dat", GEOIP_MEMORY_CACHE);
-        if (gi == NULL) {
-            gi = GeoIP_open("/opt/xplicopro/GeoLiteCity.dat", GEOIP_MEMORY_CACHE);
-        }
-    }
+    gi = GeoIP_open("/usr/share/GeoIP/GeoLiteCity.dat", GEOIP_MEMORY_CACHE);
+    
     if (gi == NULL) {
         LogPrintf(LV_ERROR, "GeoIP without GeoLiteCity database, see INSTALL");
         return -1;
     }
     
-    giv6 = GeoIP_open("/opt/xplico/GeoLiteCityv6.dat", GEOIP_MEMORY_CACHE);
-    if (giv6 == NULL) {
-        giv6 = GeoIP_open("GeoLiteCityv6.dat", GEOIP_MEMORY_CACHE);
-        if (giv6 == NULL) {
-            giv6 = GeoIP_open("/opt/xplicopro/GeoLiteCityv6.dat", GEOIP_MEMORY_CACHE);
-        }
-    }
+    giv6 = GeoIP_open("/usr/share/GeoIP/GeoLiteCityv6.dat", GEOIP_MEMORY_CACHE);
+
     if (giv6 == NULL) {
         LogPrintf(LV_ERROR, "GeoIP without GeoLiteCity database, see INSTALL");
         return -1;
