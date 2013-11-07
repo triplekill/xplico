@@ -214,6 +214,8 @@ install: installcp
 	chmod -R 777 $(INSTALL_DIR)/xi/app/tmp
 	mkdir -p $(DESTDIR)/etc/httpd/conf/extra
 	cp $(INSTALL_DIR)/cfg/apache_xi $(DESTDIR)/etc/httpd/conf/extra/httpd-xplico.conf
+	mkdir -p $(DESTDIR)/opt/xplico/xi/app/tmp/cache
+	chmod -R 777 $(DESTDIR)/opt/xplico/xi/app/tmp/cache
 endif
 
 
