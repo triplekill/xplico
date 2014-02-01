@@ -66,7 +66,7 @@ static int pei_pclfile_id;
 
 
 static volatile unsigned int incr;
-static char pcl6_path[] = "/opt/xplico/bin/pcl6";
+static char pcl6_path[] = "/usr/bin/pcl6";
 
 static bool PjlClientPkt(pjl_priv *priv, packet *pkt)
 {

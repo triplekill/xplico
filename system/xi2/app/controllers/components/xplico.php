@@ -276,7 +276,7 @@ class XplicoComponent extends Object
     
     function GhostPDLVersion() {
         if (file_exists('/usr/bin/pcl6')) {
-            return exec ('/usr/bin/pcl6 2> /tmp/versionGhost  ; cat /tmp/versionGhost | grep Version | cut -b 10,11,12,13; rm /tmp/versionGhost'); }
+            return exec ('/usr/bin/pcl6 2>| grep Version | cut -b 10,11,12,13'); }
        else {
            return __("Not installed", true); }  //Suggestion: put here a link of a 'how-to install it'
     }
