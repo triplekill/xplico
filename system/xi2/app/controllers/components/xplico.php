@@ -176,9 +176,9 @@ class XplicoComponent extends Object
         return Configure::version();
     }
     function getApacheVersion() {
-        $ver = exec('/usr/sbin/apache2 -v | grep version | cut -b 24,25,26,27,28,29,30');
+        $ver = exec('/usr/bin/httpd -v | grep version | cut -b 24,25,26,27,28,29,30');
         if (empty($ver))
-            $ver = exec('httpd2 -v | grep version | cut -b 24,25,26,27,28,29,30');
+            $ver = exec('httpd -v | grep version | cut -b 24,25,26,27,28,29,30');
 	return $ver;
     }
 
@@ -190,7 +190,7 @@ class XplicoComponent extends Object
     }
 
     function gettcpdumpVersion() {
-        return exec('/usr/sbin/tcpdump -V 2> /tmp/output.tcpdump.txt ; /bin/cat /tmp/output.tcpdump.txt  | /bin/grep tcpdump | /bin/grep version | /usr/bin/cut -b 17,18,19,20,21 ; /bin/rm output.tcpdump.txt ');
+        return exec('/usr/bin/tcpdump -V 2> /tmp/output.tcpdump.txt ; /bin/cat /tmp/output.tcpdump.txt  | /bin/grep tcpdump | /bin/grep version | /usr/bin/cut -b 17,18,19,20,21 ; /bin/rm output.tcpdump.txt ');
     }
     
     function getTsharkVersion() {
@@ -220,7 +220,7 @@ class XplicoComponent extends Object
 	return exec('/bin/cat /proc/version | /usr/bin/cut -b 15,16,17,18,19,20,21,22,23');	}
 
     function getLibPCAPVersion() {
-	return exec ('/usr/sbin/tcpdump -V 2> /tmp/output.libpcap.txt ; /bin/cat /tmp/output.libpcap.txt  | /bin/grep libpcap | /bin/grep version | /usr/bin/cut -b 17,18,19,20,21 ; /bin/rm output.libpcap.txt ');   	}
+	return exec ('/usr/bin/tcpdump -V 2> /tmp/output.libpcap.txt ; /bin/cat /tmp/output.libpcap.txt  | /bin/grep libpcap | /bin/grep version | /usr/bin/cut -b 17,18,19,20,21 ; /bin/rm output.libpcap.txt ');   	}
 
     function getxplicoAlertsVersion() {
 	if (file_exists('/opt/xplico/bin/xplicoAlerts')) {
@@ -275,8 +275,8 @@ class XplicoComponent extends Object
     }
     
     function GhostPDLVersion() {
-        if (file_exists('/opt/xplico/bin/pcl6')) {
-            return exec ('/opt/xplico/bin/pcl6 2> /tmp/versionGhost  ; cat /tmp/versionGhost | grep Version | cut -b 10,11,12,13; rm /tmp/versionGhost'); }
+        if (file_exists('/usr/bin/pcl6')) {
+            return exec ('/usr/bin/pcl6 2> /tmp/versionGhost  ; cat /tmp/versionGhost | grep Version | cut -b 10,11,12,13; rm /tmp/versionGhost'); }
        else {
            return __("Not installed", true); }  //Suggestion: put here a link of a 'how-to install it'
     }
@@ -287,7 +287,7 @@ class XplicoComponent extends Object
     
     function getmaxSizePCAP() {
         //Max size able to upload at Apache. Look for parameters post_max_size and upload_max_filesize, and choose the minimun one.
-        $apacheConfigData = parse_ini_file("/etc/php5/apache2/php.ini");
+        $apacheConfigData = parse_ini_file("/etc/php/php.ini");
         return (min(intval($apacheConfigData[      'post_max_size']), intval($apacheConfigData['upload_max_filesize'])));	
     }
 

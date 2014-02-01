@@ -174,7 +174,6 @@ Copyright:  Carlos Gacimartín <cgacimartin@gmail.com>
 		  echo "<td>";
 		  echo __("Apache version", true);
 		  echo "<td>";
-		  $apacheVersion = apache_get_version();
 		  echo $apacheVersion;
 		  echo "<td>";
 		  echo __("PHP version", true);

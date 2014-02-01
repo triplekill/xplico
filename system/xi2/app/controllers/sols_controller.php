@@ -139,7 +139,7 @@ class SolsController extends AppController {
                 }
                 else {
                     $interface = array();
-                    $foca = popen('/sbin/ifconfig -a | grep "Link encap" | cut -b -9', 'r');
+                    $foca = popen('/usr/bin/ifconfig -s | grep Iface --invert-match | cut -b -9', 'r');
                     if ($foca) {
                         while (!feof($foca)) {
                             $buffer = trim(fgets($foca, 200));
