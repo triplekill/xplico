@@ -3,9 +3,9 @@ Listen 9876
 <VirtualHost *:9876>
 	DocumentRoot /opt/xplico/xi
 	<Directory "/opt/xplico/xi">
+		RewriteEngine on
 		AllowOverride All
-		Require local
-		Satisfy Any
+		Require all granted
                 php_admin_value open_basedir "/opt/xplico/xi:/tmp:/opt/xplico:/var/run/"
 	</Directory>
 
