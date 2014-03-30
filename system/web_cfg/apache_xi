@@ -6,7 +6,7 @@ Listen 9876
 		RewriteEngine on
 		AllowOverride All
 		Require all granted
-                php_admin_value open_basedir "/opt/xplico/xi:/tmp:/opt/xplico:/var/run/"
+                php_admin_value open_basedir "/opt/xplico/xi:/tmp:/opt/xplico:/var/run/:/usr/bin:/etc/php"
 	</Directory>
 
 	ScriptAlias /cgi-bin/ /usr/lib/cgi-bin/
