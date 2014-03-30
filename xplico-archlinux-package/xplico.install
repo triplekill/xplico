@@ -37,7 +37,8 @@ fi
 
 echo "Don't forget to enable sqlite extension $PHPINI"
 
-chmod 777 -R $XPLICO_BASE/xi/app/tmp/cache
+mkdir -p $XI/tmp/cache/{persistent,models}
+chmod 777 -R $XI/tmp/cache/
 
 cd $XPLICO_SQLITE_BASE
 if [ -e "$DB" ]; then
