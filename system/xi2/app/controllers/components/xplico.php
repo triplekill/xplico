@@ -137,7 +137,7 @@ class XplicoComponent extends Object
             if ($foca) {
                 $dema_pid = fgets($foca, 200);
                 fclose($foca);
-                $foca = popen('ps -p '.$dema_pid.' | grep dema', 'r');
+                $foca = popen('ps -p '.$dema_pid.'', 'r');
                 if ($foca) {
                     while (!feof($foca)) {
                         $dema_pid = fgets($foca, 200);
