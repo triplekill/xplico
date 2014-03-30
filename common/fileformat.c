@@ -146,10 +146,10 @@ int FFormatUncompress(const char *encoding, const char *file_in,  const char *fi
                         wsize = size - zbuff.avail_out;
                         if (fp != NULL)
                             fwrite(buff, 1, wsize, fp);
-			if (ret == Z_STREAM_END) {
+                        if (ret == Z_STREAM_END) {
                             inflateEnd(&zbuff);
                             break;
-			}
+                        }
                     }
                     else {
                         if (fp != NULL)
@@ -271,6 +271,9 @@ multipart_f *FFormatMultipart(const char *file_name, const char *boundary)
                 /* end */
                 break;
             }
+            /* check end boundary */
+            if (buff[bdr_len] == '-' && buff[bdr_len+1] == '-')
+                break;
             hlen = tmp - buff + 1;
             tmp = FFMultiPartHeaderParam(buff, hlen, "Content-Disposition:");
             if (tmp != NULL) {

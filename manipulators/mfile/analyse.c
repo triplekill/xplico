@@ -150,8 +150,7 @@ static pei *HFileElab(const char *url, const char *file, size_t len, const char 
         list[add].range = FALSE;
         fp = fopen(list[add].file, "w");
         if (fp != NULL) {
-            tmp = xmalloc(HTTPFILE_FILE_DIM);
-            memset(tmp, 0, HTTPFILE_FILE_DIM);
+            tmp = xcalloc(1, HTTPFILE_FILE_DIM);
             for (j=0; j!=(long)(bdim/HTTPFILE_FILE_DIM); j++) {
                 fwrite(tmp, 1, HTTPFILE_FILE_DIM, fp);
             }
@@ -201,8 +200,7 @@ static pei *HFileElab(const char *url, const char *file, size_t len, const char 
             if (stat(list[i].file, &file_st) == 0) {
                 fp = fopen(list[i].file, "a");
                 if (fp != NULL) {
-                    tmp = xmalloc(HTTPFILE_FILE_DIM);
-                    memset(tmp, 0, HTTPFILE_FILE_DIM);
+                    tmp = xcalloc(1, HTTPFILE_FILE_DIM);
                     for (j=0; j!= (bdim-file_st.st_size)/HTTPFILE_FILE_DIM; j++) {
                         fwrite(tmp, 1, HTTPFILE_FILE_DIM, fp);
                     }
@@ -262,7 +260,7 @@ static pei *HFileElab(const char *url, const char *file, size_t len, const char 
             /* load part info */
             parts_dim = list[i].cnt;
             j = 0;
-            parts = xmalloc(sizeof(file_part)*parts_dim);
+            parts = xcalloc(1, sizeof(file_part)*parts_dim);
             while (fscanf(fp, "%lu %lu", &bstart, &bend) == 2) {
                 parts[j].start = bstart;
                 parts[j].end = bend;
@@ -353,7 +351,7 @@ static pei *HFileEnd(void)
                 /* load part info */
                 parts_dim = list[i].cnt;
                 j = 0;
-                parts = xmalloc(sizeof(file_part)*parts_dim);
+                parts = xcalloc(1, sizeof(file_part)*parts_dim);
                 while (fscanf(fp, "%lu %lu", &bstart, &bend) == 2) {
                     parts[j].start = bstart;
                     parts[j].end = bend;

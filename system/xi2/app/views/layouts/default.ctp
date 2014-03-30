@@ -82,8 +82,9 @@ Copyright: Gianluca Costa & Andrea de Franceschi 2007-2012, http://www.xplico.or
         <li><?php echo $html->link(__('Help', true), '/users/help') ?></li>
         <li><?php echo $html->link(__('Forum', true), 'http://forum.xplico.org') ?></li>
         <li><?php echo $html->link(__('Wiki', true), 'http://wiki.xplico.org') ?></li>
+        <li><?php echo $html->link(__('CapAnalysis', true), 'http://www.capanalysis.net') ?></li>
         <li><?php echo $html->link(__('Change password', true), '/users/cpassword') ?></li>
-        <li><?php echo $html->link(__('Licenses', true), '/users/licenses') ?></li>
+        <li><?php echo $html->link(__('Licenses', true), '/users/licenses') ?></li>>
         <li><?php echo $html->link(__('Logout', true), '/users/logout') ?></li>
       <?php else: ?>
         <li><?php echo $html->link(__('Login', true), '/users/login') ?></li>
@@ -111,8 +112,8 @@ Copyright: Gianluca Costa & Andrea de Franceschi 2007-2012, http://www.xplico.or
         <?php endforeach; ?>
       </div>
       <div id="adv">
-         <a href="http://www.xplico.org/contacts">
-            <img alt="Xplico Enhancements" title="Xplico Enhancements" src="<?php echo $html->url("/img/is_enhance.png") ?>"></img>
+         <a href="http://www.capanalysis.net">
+            <img alt="Xplico Enhancements" title="Xplico Enhancements" src="<?php echo $html->url("/img/capanalysis.png") ?>"></img>
         </a>
       </div>
     </div>
@@ -129,7 +130,7 @@ Copyright: Gianluca Costa & Andrea de Franceschi 2007-2012, http://www.xplico.or
   <!-- #footer: holds the site footer (logo and links) -->
   <div id="footer">
     <p id="autor">
-    &copy; 2007-2012 Gianluca Costa & Andrea de Franceschi. All Rights Reserved.<br/>
+    &copy; 2007-2013 Gianluca Costa & Andrea de Franceschi. All Rights Reserved.<br/>
     </p>
     <p id="link_icon">
     <a href="http://www.xplico.org">

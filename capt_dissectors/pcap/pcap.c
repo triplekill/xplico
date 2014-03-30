@@ -44,7 +44,11 @@
 #include "flow.h"
 #include "pcapd.h"
 #include "report.h"
+#include "dispatch.h"
 #include "snoop.h"
+
+#define DISP_PEI_MAX_QUEUE    1500
+
 
 /* external crash info */
 extern unsigned long crash_pkt_cnt;
@@ -107,6 +111,7 @@ static void PcapDissector(u_char *user, const struct pcap_pkthdr *h, const u_cha
     struct cap_ref *ref = (struct cap_ref *)user;
     packet *pkt;
     static time_t tm = 0;
+    struct timespec to;
     unsigned long len;
 
     pkt = PktNew();
@@ -140,8 +145,16 @@ static void PcapDissector(u_char *user, const struct pcap_pkthdr *h, const u_cha
     /* next serial number */
     pkt_serial++;
     if (time(NULL) > tm) {
-        tm = time(NULL) + 5;
         ReportSplash();
+        while (DispatchPeiPending() > DISP_PEI_MAX_QUEUE) {
+            to.tv_sec = 0;
+            to.tv_nsec = 300000000;
+            /* wait some time */
+            while (nanosleep(&to, &to) != 0)
+                ;
+            ReportSplash();
+        }
+        tm = time(NULL) + 5;
     }
 }
 
@@ -151,6 +164,7 @@ static void PcapDissectorTsec(u_char *user, const struct pcap_pkthdr *h, const u
     struct cap_ref *ref = (struct cap_ref *)user;
     packet *pkt;
     static time_t tm = 0;
+    struct timespec to;
     unsigned long len;
     struct timespec dt;
     static struct timespec last_t = {0,0};
@@ -194,10 +208,19 @@ static void PcapDissectorTsec(u_char *user, const struct pcap_pkthdr *h, const u
     /* next serial number */
     pkt_serial++;
     if (time(NULL) > tm) {
-        tm = time(NULL) + 5;
         ReportSplash();
+        while (DispatchPeiPending() > DISP_PEI_MAX_QUEUE) {
+            to.tv_sec = 0;
+            to.tv_nsec = 300000000;
+            /* wait some time */
+            while (nanosleep(&to, &to) != 0)
+                ;
+            ReportSplash();
+        }
+        tm = time(NULL) + 5;
     }
 }
+
 
 static int SnoopDissector(FILE *fp, struct cap_ref *ref)
 {
@@ -205,6 +228,7 @@ static int SnoopDissector(FILE *fp, struct cap_ref *ref)
     unsigned long hlen, len;
     packet *pkt;
     time_t tm = 0;
+    struct timespec to;
 
     while (1) {
         /* read header */
@@ -217,11 +241,11 @@ static int SnoopDissector(FILE *fp, struct cap_ref *ref)
         }
         pkt = PktNew();
         /* conver values */
-	hdr.tlen = ntohl(hdr.tlen);
-	hdr.len = ntohl(hdr.len);
-	hdr.blen = ntohl(hdr.blen);
-	hdr.secs = ntohl(hdr.secs);
-	hdr.usecs = ntohl(hdr.usecs);
+        hdr.tlen = ntohl(hdr.tlen);
+        hdr.len = ntohl(hdr.len);
+        hdr.blen = ntohl(hdr.blen);
+        hdr.secs = ntohl(hdr.secs);
+        hdr.usecs = ntohl(hdr.usecs);
         len = hdr.blen - hlen;
         ref->cnt++;
         pkt->raw = DMemMalloc(len+sizeof(unsigned long)*2+sizeof(char *)+4);
@@ -248,8 +272,16 @@ static int SnoopDissector(FILE *fp, struct cap_ref *ref)
         /* next serial number */
         pkt_serial++;
         if (time(NULL) > tm) {
-            tm = time(NULL) + 5;
             ReportSplash();
+            while (DispatchPeiPending() > DISP_PEI_MAX_QUEUE) {
+                to.tv_sec = 0;
+                to.tv_nsec = 300000000;
+                /* wait some time */
+                while (nanosleep(&to, &to) != 0)
+                    ;
+                ReportSplash();
+            }
+            tm = time(NULL) + 5;
         }
     }
 

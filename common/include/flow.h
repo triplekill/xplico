@@ -78,13 +78,18 @@ struct _flow_t {
 
 
 /** flow descriptor*/
+typedef struct _cmpflow_d cmpflow;
+struct _cmpflow_d {
+    const pstack_f *stack;   /**< flow stack (point in to stack of flow structure) */
+    void *priv;              /**< private data */
+};
+
 typedef struct _flow_d flow_d;
 struct _flow_d {
     int fid;                 /**< flow id in global table flaws (-1 if free) */
+    int pid;                 /**< protocol id of flow: master protocol/dissector */
     int pfid;                /**< parent flow id (-1 no parent) */
-    unsigned long hash;      /**< hash to sort the descriptor */
-    unsigned short rule_id;  /**< id of rule to check packet for this flow */
-    const pstack_f *stack;   /**< flow stack (point in to stack of flow structure) */
+    cmpflow cmp;             /**< compare flow structure */
 };
 
 

@@ -37,6 +37,12 @@
 #define TC_VER_REV    0
 #define TC_CR         "Part of Xplico Internet Traffic Decoder (NFAT).\nSee http://www.xplico.org for more information.\n\nCopyright 2007-2011 Gianluca Costa & Andrea de Franceschi and contributors.\nThis is free software; see the source for copying conditions. There is NO\nwarranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n"
 
+struct pcappkt_hdr {
+    unsigned int tv_sec;      /* timestamp seconds */
+    unsigned int tv_usec;     /* timestamp microseconds */
+    unsigned int caplen;      /* number of octets of packet saved in file */
+    unsigned int len;	      /* actual length of packet */
+};
 
 static void Usage(char *name)
 {
@@ -66,6 +72,7 @@ int main(int argc, char *argv[])
     char errbuf[PCAP_ERRBUF_SIZE];
     pcap_t *cap;
     struct pcap_pkthdr *h;
+    struct pcappkt_hdr nh;
     const u_char *bytes;
     struct pcap_file_header fh;
     FILE *fp_pcap;
@@ -170,13 +177,17 @@ int main(int argc, char *argv[])
             break;
         if (pk_cnt >= pk_start) {
             wcnt = 0;
+            nh.tv_sec = h->ts.tv_sec;
+            nh.tv_usec = h->ts.tv_usec;
+            nh.caplen = h->caplen;
+            nh.len = h->len;
             do {
-                nwrt = fwrite(((char *)h)+wcnt, 1, sizeof(struct pcap_pkthdr)-wcnt, fp_pcap);
+                nwrt = fwrite(((char *)&nh)+wcnt, 1, sizeof(struct pcappkt_hdr)-wcnt, fp_pcap);
                 if (nwrt != -1)
                     wcnt += nwrt;
                 else
                     break;
-            } while (wcnt != sizeof(struct pcap_pkthdr));
+            } while (wcnt != sizeof(struct pcappkt_hdr));
             
             wcnt = 0;
             do {

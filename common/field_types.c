@@ -161,7 +161,6 @@ int FTCmp(const ftval *a, const ftval *b, enum ftype type, enum ft_op op, void *
             if (a->str != NULL && b->str != NULL && strstr(a->str, b->str) != NULL) {
                 return 0;
             }
-
             break;
 
         default:

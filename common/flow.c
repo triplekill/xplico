@@ -5,7 +5,7 @@
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2012 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -33,7 +33,6 @@
 #include "configs.h"
 #include "flow.h"
 #include "proto.h"
-#include "rule.h"
 #include "log.h"
 #include "dmemory.h"
 #include "grp_flows.h"
@@ -42,10 +41,17 @@
 
 
 /** define */
-#define FW_TBL_ELEMENT_DELTA   10000
+#define FW_TBL_ELEMENT_DELTA   100000
+#define FW_TBL_FFREE_LIM        40000
 
 /* avoid deadlock: new code */
 #define XP_NEW_CLOSE              1
+
+typedef struct _freel freel;
+struct _freel {
+    int id;
+    freel *nxt;
+};
 
 /** external variables */
 extern prot_desc *prot_tbl;
@@ -59,7 +65,8 @@ static pthread_mutex_t flow_mux;           /* mutex to access atomicly the tbl *
 static volatile pthread_t ptrd_lock;       /* ptread that lock access */
 static short nesting;                      /* lock nesting */
 static time_t gbl_time;                    /* flow global time */
-
+static freel *ffree;
+static unsigned long ffree_num;
 
 /** internal functions */
 static int FlowElemInit(flow *flw, bool reset)
@@ -131,37 +138,40 @@ static int FlowElemInit(flow *flw, bool reset)
 static int FlowTblExtend(void)
 {
     unsigned long i, len;
-    flow *new;
+    flow *newft, *tmp;
 
     len = tbl_dim + FW_TBL_ELEMENT_DELTA;
 
     /* lock all mutex */
-    for (i=0; i<tbl_dim; i++) {
+    for (i=0; i!=tbl_dim; i++) {
         pthread_mutex_lock(flow_tbl[i].mux);
     }
 
     /* extend memory(copy) */
-    new = xrealloc(flow_tbl, sizeof(flow)*(len));
-    if (new == NULL)
+    newft = xmalloc(sizeof(flow)*(len));
+    if (newft == NULL)
         return -1;
+    memcpy(newft, flow_tbl, sizeof(flow)*(tbl_dim));
     
     /* initialize new elements */
     for (i=tbl_dim; i<len; i++) {
-        memset(&new[i], 0, sizeof(flow));
-        if (FlowElemInit(&(new[i]), FALSE) != 0) {
+        memset(&newft[i], 0, sizeof(flow));
+        if (FlowElemInit(&(newft[i]), FALSE) != 0) {
             /* unlock all mutex */
-            for (i=0; i<tbl_dim; i++) {
+            for (i=0; i!=tbl_dim; i++) {
                 pthread_mutex_unlock(flow_tbl[i].mux);
             }
+            xfree(newft);
             return -1;
         }
     }
-
-    flow_tbl = new;
+    tmp = flow_tbl;
+    flow_tbl = newft;
     /* unlock all mutex */
-    for (i=0; i<tbl_dim; i++) {
+    for (i=0; i!=tbl_dim; i++) {
         pthread_mutex_unlock(flow_tbl[i].mux);
     }
+    xfree(tmp);
     tbl_dim = len;
 
     return 0;
@@ -205,7 +215,9 @@ int FlowInit(void)
     pthread_mutex_init(&flow_mux, NULL);
     ptrd_lock = 0;
     nesting = 0;
-
+    ffree = NULL;
+    ffree_num = 0;
+    
     return 0;
 }
 
@@ -227,24 +239,35 @@ const pstack_f *FlowStack(int flow_id)
 int FlowCreate(pstack_f *stk)
 {
     int i, ret;
-
+    freel *ftmp;
+    
     FlowTblLock();
 
-    /* search free location */
-    for (i=0; i!=tbl_dim; i++) {
-        if (flow_tbl[i].stack == NULL) {
-            break;
+    if (ffree == NULL) {
+        /* search free location */
+        for (i=0; i!=tbl_dim; i++) {
+            if (flow_tbl[i].stack == NULL) {
+                break;
+            }
+        }
+        if (i == tbl_dim) {
+            ret = FlowTblExtend();
+            if (ret == -1) {
+                LogPrintf(LV_ERROR, "Unable to extend flows data table");
+                FlowTblUnlock();
+    
+                return -1;
+            }
         }
     }
-    if (i == tbl_dim) {
-        ret = FlowTblExtend();
-        if (ret == -1) {
-            LogPrintf(LV_ERROR, "Unable to extend flows data table");
-            FlowTblUnlock();
-
-            return -1;
-        }
+    else {
+        i = ffree->id;
+        ftmp = ffree;
+        ffree = ffree->nxt;
+        xfree(ftmp);
+        ffree_num--;
     }
+    
 #ifdef XPL_CHECK_CODE
     if (flow_tbl[i].fpkt != NULL || flow_tbl[i].pkt_num != 0) {
         LogPrintf(LV_OOPS, "flow element free with packet!");
@@ -272,7 +295,6 @@ int FlowCreate(pstack_f *stk)
 
 int FlowClose(int flow_id)
 {
-    int ret;
 #if XP_NEW_CLOSE
     int pid;
 #endif
@@ -307,7 +329,7 @@ int FlowClose(int flow_id)
 
     /* if this flow isn't in elaboration we search an heuristic dissector */
     if (flow_tbl[flow_id].elab == FALSE && flow_tbl[flow_id].pkt_num != 0) {
-        ret = ProtSearchHeuDissec(flow_tbl[flow_id].proto_id, flow_id);
+        ProtSearchHeuDissec(flow_tbl[flow_id].proto_id, flow_id);
     }
     pthread_mutex_lock(flow_tbl[flow_id].mux);
 
@@ -381,6 +403,7 @@ int FlowDelete(int flow_id)
     packet *pkt, *tmp;
     int i, cnt, base;
     int nxt_flw, grp_id;
+    freel *ftmp;
     
     FlowTblLock();
 
@@ -513,7 +536,13 @@ int FlowDelete(int flow_id)
 
     /* reset flow cel */
     FlowElemInit(flow_tbl+flow_id, TRUE);
-
+    if (ffree_num != FW_TBL_FFREE_LIM) {
+        ftmp = xmalloc(sizeof(freel));
+        ftmp->id = flow_id;
+        ftmp->nxt = ffree;
+        ffree = ftmp;
+        ffree_num++;
+    }
     flow_num--;
 
     FlowTblUnlock();
@@ -653,6 +682,7 @@ packet *FlowGetPkt(int flow_id)
             to.tv_sec += tou.tv_usec/1000000;
             to.tv_nsec = (tou.tv_usec%1000000)*1000;
             ret = pthread_cond_timedwait(flow_tbl[flow_id].cond, flow_tbl[flow_id].mux, &to);
+            ret = ret;
             if (flow_tbl[flow_id].fpkt == NULL)
                 break;
         }
@@ -1304,7 +1334,7 @@ void FlowLoopLog(void)
 
     for (i=0; i!=tbl_dim; i++) {
         if (flow_tbl[i].stack != NULL) {
-            LogPrintfStack(LV_ERROR, flow_tbl[i].stack, "Flow n%i in loop", i);
+            LogPrintfStack(LV_ERROR, flow_tbl[i].stack, "Flow n %i in loop", i);
         }
     }
 }

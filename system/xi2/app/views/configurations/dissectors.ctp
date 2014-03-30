@@ -156,8 +156,14 @@ $(function() {
   <tr>
       <td><?php __('PRISM'); ?></td>
       <td><?php echo $html->link($dissectors['prism'], '/configurations/dissectors/prism'); ?></td>
-      <td></td>
-      <td></td>
+      <td><?php __('NULL'); ?></td>
+      <td><?php echo $html->link($dissectors['prism'], '/configurations/dissectors/null'); ?></td>
+  </tr>
+  <tr>
+      <td><?php __('chdlc'); ?></td>
+      <td><?php echo $html->link($dissectors['prism'], '/configurations/dissectors/chdlc'); ?></td>
+      <td><?php __('Web Yahoo! MSG'); ?></td>
+      <td><?php echo $html->link($dissectors['prism'], '/configurations/dissectors/webymsg'); ?></td>
   </tr>
 </table>
 </div>

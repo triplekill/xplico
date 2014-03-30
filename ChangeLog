@@ -1,6 +1,20 @@
+xplico 1.1.0
+  * Performance improved
+  * nDPI updated
+  * IRC bug fixed
+  * HTTP bug fixed
+  * VoIP (SIP, RTP) bug fixed
+  * FTP bug fixed
+  * changed the FaceBook DB tables
+  * Null/Loopback dissector
+  * Cisco HDLC dissector
+  * Libero.it and RossoAlice webmail decoding
+  * Yahoo messenger (web and mobile)
+  * Dig using file signatures (unknown flows)
+
 xplico 1.0.1
   * nDPI integration
-  * performace improved
+  * performance improved
   * FTP dissector improved
   * Added the prism dissector
   * CLI execution bug fixed
@@ -10,7 +24,7 @@ xplico 1.0.1
   * FaceBook Chat updated
   * FaceBook Message (partial)
   * HTTP without initial packets (packets lost)
-  * RTP dissector imporved
+  * RTP dissector improved
   * PCAP2WAV, RTP2WAV interface added
 
 xplico 1.0.0

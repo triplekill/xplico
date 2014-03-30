@@ -94,12 +94,11 @@ int DispInit(const char *cfg_file)
     char dns_dir_file[256];
 
     LogPrintf(LV_DEBUG, "None Dispatcher");
-
-#if DNS_EN
     geo_id = 0;
     sprintf(kml_file, "%s/geomap_%lu.kml", ProtTmpDir(), (time(NULL)/100)*100);
     GearthNew(geo_id, kml_file, NULL, NULL);
 
+#if DNS_EN
     dns_id = ProtId("dns");
     if (dns_id != -1) {
         pei_dns_host_id =  ProtPeiComptId(dns_id, "host");
@@ -124,8 +123,10 @@ int DispInit(const char *cfg_file)
 int DispEnd(void)
 {
     GearthClose(geo_id);
+#if DNS_EN
     if (dns_fp != NULL)
         fclose(dns_fp);
+#endif
     
     return 0;
 }
@@ -141,8 +142,12 @@ int DispInsPei(pei *ppei)
         else
 #endif
         {
+#if 0
             PeiPrint(ppei);
             ProtStackFrmDisp(ppei->stack, TRUE);
+#endif
+            if (PeiGetReturn(ppei) == FALSE)
+                PeiDestroy(ppei);
         }
         //GearthPei(geo_id, ppei);
     }

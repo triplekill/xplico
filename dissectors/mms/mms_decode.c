@@ -5,7 +5,7 @@
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  * based on packet-mmse.c of Wireshark, Copyright 1998 Gerald Combs
  *
@@ -445,7 +445,7 @@ static char *Value2String(unsigned char val, const value_string *array, char *de
 }
 
 
-static int MMSString(const unsigned char *data, const int dim, int offset, char *str)
+static int MMSString(const unsigned char *data, const int dim, int offset, char **str)
 {
     int i, j;
 
@@ -454,11 +454,13 @@ static int MMSString(const unsigned char *data, const int dim, int offset, char 
     if (data[i] == MM_QUOTE) {
         i++;
     }
+
+    *str = xmalloc(strlen((const char *)data + i) + 1);
     
     while (data[i] > 0) {
-        str[j++] = (char)data[i++];
+        (*str)[j++] = (char)data[i++];
     }
-    str[j] = '\0';
+    (*str)[j] = '\0';
 
     i++;
     
@@ -507,7 +509,7 @@ static int MMSValueLength(const unsigned char *data, const int dim, int offset, 
 }
 
 
-static int MMSEncString(const unsigned char *data, const int dim, int offset, char *strval)
+static int MMSEncString(const unsigned char *data, const int dim, int offset, char **strval)
 {
     int field;
     int length;
@@ -517,13 +519,14 @@ static int MMSEncString(const unsigned char *data, const int dim, int offset, ch
     count = 0;
     if (field < 0x20) {
         length = MMSValueLength(data, dim, offset, &count);
+        *strval = xmalloc(length);
 	if (length < 2) {
-	    *strval = '\0';
+	    **strval = '\0';
 	} else {
             for (i=0; i!=length-1; i++) {
-                strval[i] = data[offset+count+1+i];
+                (*strval)[i] = data[offset+count+1+i];
             }
-            strval[length] = '\0';
+            (*strval)[length] = '\0';
 	}
 	return count + length;
     }
@@ -561,22 +564,21 @@ static long MMSGetLongInt(const unsigned char *data, const int dim, int offset, 
 }
 
 
-static int MMSReadContentType(const unsigned char *data, const int dim, int offset, unsigned int *well_known_content, char *str, char **name)
+static int MMSReadContentType(const unsigned char *data, const int dim, int offset, unsigned int *well_known_content, char **str, char **name)
 {
     unsigned char field;
     char *ct_str;
     int len, count, end;
-    char buff[MMS_STR_DIM];
+    char *buff;
     int ret;
 
     field = data[offset];
     ct_str = NULL;
     *well_known_content = 0;
-    str[0] = '\0';
     len = ret = 0;
     if (field & 0x80) {
         ct_str = Value2String(field & 0x7F, vals_content_types, "Unknown type");
-        strcpy(str, ct_str);
+        *str = strdup(ct_str);
         ret = 1;
         *well_known_content = field & 0x7F;
     }
@@ -598,9 +600,12 @@ static int MMSReadContentType(const unsigned char *data, const int dim, int offs
         }
         else if ((field  & 0x80 ) || field <= 30) {
             ct_str = Value2String(field & 0x7F, vals_content_types, "Unknown type");
-            strcpy(str, ct_str);
+            *str = strdup(ct_str);
             offset++;
             *well_known_content = field & 0x7F;
+        } else {
+            *str = xmalloc(1);
+            (*str)[0] = '\0';
         }
         if (offset < end) {
             /* Add parameters if any */
@@ -618,31 +623,35 @@ static int MMSReadContentType(const unsigned char *data, const int dim, int offs
                     break;
 
                 case MMT_TYPE_SPEC:
-                    count = MMSEncString(data, dim, offset, buff);
+                    count = MMSEncString(data, dim, offset, &buff);
                     offset += count;
                     printf("Parameter MMT_TYPE_SPEC: %s\n", buff);
+                    xfree(buff);
                     break;
 
                 case MMT_START:
-                    count = MMSEncString(data, dim, offset, buff);
+                    count = MMSEncString(data, dim, offset, &buff);
                     offset += count;
                     printf("Parameter MMT_START: %s\n", buff);
+                    xfree(buff);
                     break;
                     
                 case MMT_FILENAME:
-                    count = MMSEncString(data, dim, offset, buff);
+                    count = MMSEncString(data, dim, offset, &buff);
                     offset += count;
                     printf("Parameter MMT_FILENAME: %s\n", buff);
+                    xfree(buff);
                     break;
 
                 case MMT_NAME:
-                    count = MMSEncString(data, dim, offset, buff);
+                    count = MMSEncString(data, dim, offset, &buff);
                     offset += count;
                     printf("Parameter MMT_NAME: %s\n", buff);
                     if (name != NULL) {
                         *name = xmalloc(count+1);
                         strcpy(*name, buff);
                     }
+                    xfree(buff);
                     break;
 
                 default:
@@ -660,7 +669,7 @@ static int MMSReadContentType(const unsigned char *data, const int dim, int offs
 static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim, unsigned int *ctype)
 {
     unsigned char field, pdu, version;
-    char str[MMS_STR_DIM];
+    char *str;
     const char *str_val;
     int offset, len, count, cnt, i;
     char cont = 1;
@@ -674,8 +683,9 @@ static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim,
         field = data[offset++];
         //printf("0x%x\n", field);
         if (!(field & 0x80)) {
-            len = MMSString(data, dim, offset, str);
+            len = MMSString(data, dim, offset, &str);
             printf("Unknow: %s\n", str);
+            xfree(str);
             offset += len;
             continue;
         }
@@ -689,18 +699,19 @@ static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim,
             break;
 
         case MM_CTYPE_HDR:
-            str[0] = '\0';
-            len = MMSReadContentType(data, dim, offset, ctype, str, NULL);
+            len = MMSReadContentType(data, dim, offset, ctype, &str, NULL);
             msg->cont_type = xmalloc(strlen(str)+1);
             strcpy(msg->cont_type, str);
+            xfree(str);
             printf("MM_CTYPE_HDR: %s\n", msg->cont_type);
             offset += len;
             cont = 0;
             break;
 
         case MM_TID_HDR:		/* Text-string	*/
-            len = MMSString(data, dim, offset, str);
+            len = MMSString(data, dim, offset, &str);
             printf("MM_TID_HDR: %s\n", str);
+            xfree(str);
             offset += len;
             break;
             
@@ -715,18 +726,16 @@ static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim,
             break;
 
         case MM_BCC_HDR:		/* Encoded-string-value	*/
-            len = MMSEncString(data, dim, offset, str);
+            len = MMSEncString(data, dim, offset, &str);
             printf("MM_BCC_HDR: %s\n", str);
-            msg->bcc = xmalloc(strlen(str)+1);
-            strcpy(msg->bcc, str);
+            msg->bcc = str;
             offset += len;
             break;
             
         case MM_CC_HDR:			/* Encoded-string-value	*/
-            len = MMSEncString(data, dim, offset, str);
+            len = MMSEncString(data, dim, offset, &str);
             printf("MM_BCC_HDR: %s\n", str);
-            msg->cc = xmalloc(strlen(str)+1);
-            strcpy(msg->cc, str);
+            msg->cc = str;
             offset += len;
             break;
 
@@ -743,8 +752,9 @@ static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim,
                 }
             }
             else {
-                len = MMSString(data, dim, offset, str);
+                len = MMSString(data, dim, offset, &str);
                 printf("MM_CLOCATION_HDR: %s\n", str);
+                xfree(str);
             }
             offset += len;
             break;
@@ -799,21 +809,22 @@ static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim,
             field = data[offset + count];
             if (field == MM_RELAT_TOKEN) {
                 if (len > 1) {
+                    str = xmalloc(len + 1);
                     for (i=0; i != len; i++)
                         str[i] = data[offset + i];
                     str[len] = '\0';
                 }
                 else {
+                    str = xmalloc(1);
                     str[0] = '\0';
                 }
                 printf("MM_FROM_HDR 1: %s %i\n", str);
             }
             else {
-                MMSEncString(data, dim, offset, str);
+                MMSEncString(data, dim, offset, &str);
                 printf("MM_FROM_HDR 2: %s\n", str);
             }
-            msg->from = xmalloc(strlen(str)+1);
-            strcpy(msg->from, str);
+            msg->from = str;
             offset += count + len;
             break;
 
@@ -825,15 +836,17 @@ static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim,
                 printf("MM_MCLASS_HDR: %s\n", str_val);
             }
             else {
-                len = MMSString(data, dim, offset, str);
+                len = MMSString(data, dim, offset, &str);
                 printf("MM_MCLASS_HDR: %s\n", str);
+                xfree(str);
                 offset += len;
             }
             break;
 
         case MM_MID_HDR:		/* Text-string		*/
-            len = MMSString(data, dim, offset, str);
+            len = MMSString(data, dim, offset, &str);
             printf("MM_MID_HDR: %s\n", str);
+            xfree(str);
             offset += len;
             break;
 
@@ -885,8 +898,9 @@ static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim,
                 }
             }
             else {
-                len = MMSEncString(data, dim, offset, str);
+                len = MMSEncString(data, dim, offset, &str);
                 printf("MM_RTEXT_HDR: %s\n", str);
+                xfree(str);
             }
             offset += len;
             break;
@@ -906,16 +920,16 @@ static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim,
             break;
 
         case MM_SUBJECT_HDR:		/* Encoded-string-value	*/
-            len = MMSEncString(data, dim, offset, str);
+            len = MMSEncString(data, dim, offset, &str);
             printf("MM_SUBJECT_HDR: %s\n", str);
+            xfree(str);
             offset += len;
             break;
 
         case MM_TO_HDR:			/* Encoded-string-value	*/
-            len = MMSEncString(data, dim, offset, str);
+            len = MMSEncString(data, dim, offset, &str);
             printf("MM_TO_HDR: %s\n", str);
-            msg->to = xmalloc(strlen(str)+1);
-            strcpy(msg->to, str);
+            msg->to = str;
             offset += len;
             break;
 
@@ -942,8 +956,9 @@ static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim,
                 }
             }
             else {
-                len = MMSEncString(data, dim, offset, str);
+                len = MMSEncString(data, dim, offset, &str);
                 printf("MM_RETRIEVE_TEXT_HDR: %s\n", str);
+                xfree(str);
             }
             offset += len;
             break;
@@ -977,8 +992,9 @@ static int MMSHeader(mms_message *msg, const unsigned char *data, const int dim,
             break;
 
         case MM_REPLY_CHARGING_ID_HDR:	/* Text-string */
-            len = MMSString(data, dim, offset, str);
+            len = MMSString(data, dim, offset, &str);
             printf("MM_REPLY_CHARGING_ID_HDR: %s\n", str);
+            xfree(str);
             offset += len;
             break;
             
@@ -1048,8 +1064,7 @@ static int MMsBody(mms_message *msg, const unsigned char *data, const int dim, i
         data_len = MMSUIntVar(data, dim, offset, &count);
         offset += count;
         msg->part[i].size = data_len;
-        msg->part[i].ctype = xmalloc(MMS_STR_DIM);
-        MMSReadContentType(data, dim, offset, &tmp, msg->part[i].ctype, &msg->part[i].name);
+        MMSReadContentType(data, dim, offset, &tmp, &msg->part[i].ctype, &msg->part[i].name);
         printf("Ctype: %s\n", msg->part[i].ctype);
         msg->part[i].path = xmalloc(MMS_STR_DIM);
         sprintf(msg->part[i].path, "%s/%lu_%p_%i.bin", tmp_path, time(NULL), msg->part[i].path, i);

@@ -24,7 +24,7 @@
 
 
 # sub directory
-SUBDIRS = www mfbc mwmail mfile mpaltalk
+SUBDIRS = www mfbc mwmail mfile mpaltalk mwebymsg
 
 
 # To make it visible

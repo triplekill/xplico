@@ -90,6 +90,7 @@ class XplicoComponent extends Object
                                          array('name' => __('Nntp', true), 'link' => '/nntp_groups/index'),
                                          array('name' => __('Facebook', true), 'link' => '/fbuchats/index'),
                                          array('name' => __('MSN', true), 'link' => '/msn_chats/index'),
+                                         array('name' => __('Yahoo MSG', true), 'link' => '/webymsgs/index'),
                                          array('name' => __('IRC', true), 'link' => '/ircs/index'),
                                          array('name' => __('Paltalk', true), 'link' => '/paltalk_rooms/index'),
                                          array('name' => __('Paltalk Exp', true), 'link' => '/paltalk_exps/index')
@@ -101,7 +102,8 @@ class XplicoComponent extends Object
                                          )
                                    ),
                                array('name' => __('Undecoded', true), 'sub' => array(
-                                         array('name' => __('TCP-UDP', true), 'link' => '/unknows/index')
+                                         array('name' => __('TCP-UDP', true), 'link' => '/unknows/index'),
+                                         array('name' => __('Dig', true), 'link' => '/unkfiles/index')
                                          )
                                    )
                                )
@@ -297,6 +299,8 @@ class XplicoComponent extends Object
             return 'MySQL';
         if ($fields['default']['driver'] == 'sqlite3')
             return 'SQLite 3';
+        if ($fields['default']['driver'] == 'postgres')
+            return 'PostgreSQL';
         return $fields['default']['driver'];
     }
 

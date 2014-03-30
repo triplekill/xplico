@@ -5,12 +5,12 @@
  * PHP versions 4 and 5
  *
  * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright 2005-2011, Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * Copyright 2005-2012, Cake Software Foundation, Inc. (http://cakefoundation.org)
  *
  * Licensed under The MIT License
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright 2005-2011, Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * @copyright     Copyright 2005-2012, Cake Software Foundation, Inc. (http://cakefoundation.org)
  * @link          http://cakephp.org CakePHP(tm) Project
  * @package       cake
  * @subpackage    cake.cake.libs.model.datasources.dbo
@@ -492,6 +492,7 @@ class DboPostgres extends DboSource {
 
 /**
  * Auxiliary function to quote matched `(Model.fields)` from a preg_replace_callback call
+ * Quotes the fields in a function call.
  *
  * @param string matched string
  * @return string quoted strig
@@ -503,9 +504,11 @@ class DboPostgres extends DboSource {
 			$prepend = 'DISTINCT ';
 			$match[1] = trim(str_replace('DISTINCT', '', $match[1]));
 		}
-		if (strpos($match[1], '.') === false) {
+		$constant = preg_match('/^\d+|NULL|FALSE|TRUE$/i', $match[1]);
+
+		if (!$constant && strpos($match[1], '.') === false) {
 			$match[1] = $this->name($match[1]);
-		} else {
+		} elseif (!$constant){
 			$parts = explode('.', $match[1]);
 			if (!Set::numeric($parts)) {
 				$match[1] = $this->name($match[1]);

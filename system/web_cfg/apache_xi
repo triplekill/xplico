@@ -1,13 +1,11 @@
-NameVirtualHost *:9876
 Listen 9876
 
 <VirtualHost *:9876>
 	DocumentRoot /opt/xplico/xi
 	<Directory "/opt/xplico/xi">
-		Options All
 		AllowOverride All
-		Order allow,deny
-		allow from all
+		Require local
+		Satisfy Any
                 php_admin_value open_basedir "/opt/xplico/xi:/tmp:/opt/xplico:/var/run/"
 	</Directory>
 

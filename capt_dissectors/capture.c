@@ -134,7 +134,6 @@ int CapInit(const char *file_cfg, const char *cap)
         return -1;
     }
 
-
     CaptSource = dlsym(handle, CAPT_SOURCE_FUN);
     
     return 0;

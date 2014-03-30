@@ -32,7 +32,7 @@
 
 /* path buffer size */
 #define HTTP_FILENAME_PATH_SIZE        256
-#define HTTP_CHUNKED_BUFF_SIZE         10240
+#define HTTP_CHUNKED_BUFF_SIZE         16318
 
 /* standard port */
 #define TCP_PORTS_HTTP {80, 8080, 3128, 3132, 8088, 11371, 3689}

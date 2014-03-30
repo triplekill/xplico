@@ -603,15 +603,17 @@ static bool IrcClientPkt(irc_priv *priv, packet *pkt)
 
     /* first time, the verify function verify that first pkt is a client pkt */
     if (priv->dir == IRC_CLT_DIR_NONE) {
-        if (ret == TRUE)
-            priv->dir = IRC_CLT_DIR_OK;
-        else {
+        if (TCP_PORT_IRC == priv->port) {
             priv->dir = IRC_CLT_DIR_REVERS;
             ret = TRUE;
-            LogPrintf(LV_DEBUG, "Acqusition file have an error!");
-            if (pkt != NULL)
-                ProtStackFrmDisp(pkt->stk, TRUE);
-
+        }
+        else {
+            if (ret == TRUE)
+                priv->dir = IRC_CLT_DIR_OK;
+            else {
+                priv->dir = IRC_CLT_DIR_REVERS;
+                ret = TRUE;
+            }
         }
     }
     else {
@@ -757,6 +759,14 @@ static char *IrcPrefNickname(char *prefix, unsigned short len)
 {
     unsigned short i;
     char *nickname;
+
+#if 0
+    if (prefix == NULL) {
+        extern unsigned long crash_pkt_cnt;
+        printf("Merda: %lu\n", crash_pkt_cnt);
+        exit(-1);
+    }
+#endif
 
     nickname = prefix++;
     i = 1;

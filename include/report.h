@@ -41,5 +41,6 @@ struct _prot_rep_ {
 
 int ReportInit(void);
 int ReportSplash(void);
+void ReportFilesDescr(void);
 
 #endif /* __REPORT_H__ */

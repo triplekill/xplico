@@ -5,12 +5,12 @@
  * PHP versions 4 and 5
  *
  * CakePHP(tm) : Rapid Development Framework (http://cakephp.org)
- * Copyright 2005-2011, Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * Copyright 2005-2012, Cake Software Foundation, Inc. (http://cakefoundation.org)
  *
  * Licensed under The MIT License
  * Redistributions of files must retain the above copyright notice.
  *
- * @copyright     Copyright 2005-2011, Cake Software Foundation, Inc. (http://cakefoundation.org)
+ * @copyright     Copyright 2005-2012, Cake Software Foundation, Inc. (http://cakefoundation.org)
  * @link          http://cakephp.org CakePHP(tm) Project
  * @package       cake
  * @subpackage    cake.cake.libs
@@ -114,7 +114,7 @@ class Configure extends Object {
 				if (!class_exists('Debugger')) {
 					require LIBS . 'debugger.php';
 				}
-				$reporting = E_ALL & ~E_DEPRECATED;
+				$reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT;
 				if (function_exists('ini_set')) {
 					ini_set('display_errors', 1);
 				}
@@ -127,7 +127,7 @@ class Configure extends Object {
 				if (is_integer($_this->log) && !$_this->debug) {
 					$reporting = $_this->log;
 				} else {
-					$reporting = E_ALL & ~E_DEPRECATED;
+					$reporting = E_ALL & ~E_DEPRECATED & ~E_STRICT;
 				}
 				error_reporting($reporting);
 				if (!class_exists('CakeLog')) {
@@ -1064,8 +1064,8 @@ class App extends Object {
 		}
 		if (file_exists($file)) {
 			if (!$this->return) {
-				require($file);
 				$this->__loaded[$file] = true;
+				require($file);
 			}
 			return true;
 		}

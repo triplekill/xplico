@@ -45,9 +45,9 @@ $(function() {
 	<dt><?php __('Case and Session name'); ?></dt>
 	<dd><?php echo $html->link($sol['Pol']['name'], '/pols/view/' .$sol['Pol']['id']).' -> '.$sol['Sol']['name']; ?></dd>
 	<dt><?php __('Cap. Start Time'); ?></dt>
-	<dd><?php echo $sol['Sol']['start_time']; ?></dd>
+	<dd><?php if ($sol['Sol']['start_time'] != '1990-01-01 00:00:00') echo $sol['Sol']['start_time']; else echo '---'; ?></dd>
 	<dt><?php __('Cap. End Time'); ?></dt>
-	<dd><?php echo $sol['Sol']['end_time']; ?></dd>
+	<dd><?php if ($sol['Sol']['start_time'] != '1990-01-01 00:00:00') echo $sol['Sol']['end_time']; else echo '---'; ?></dd>
 	<dt><?php __('Status'); ?></dt>
 	<dd><?php echo $sol['Sol']['status']; ?></dd>
         <dt><?php __('Hosts'); ?></dt>
@@ -207,12 +207,12 @@ $(function() {
   </div>
   <div class="solbox">
     <div class="sol">
-      <h3><?php __('IRC/Paltalk Exp/Msn'); ?></h3>
+      <h3><?php __('IRC/Paltalk Exp/Msn/Yahoo!'); ?></h3>
       <dl>
         <dt><?php __('Server'); ?></dt>
         <dd><?php echo $irc_num; ?></dd>
         <dt><?php __('Channels'); ?></dt>
-        <dd><?php echo $irc_chnl_num.'/'.$paltalk_exp_num.'/'.$msn_num; ?></dd>
+        <dd><?php echo $irc_chnl_num.'/'.$paltalk_exp_num.'/'.$msn_num.'/'.$webymsg; ?></dd>
      </dl>
       
    </div>
@@ -295,6 +295,8 @@ $(function() {
       <dl>
         <dt><?php __('Text flows'); ?></dt>
         <dd><?php echo $text_num; ?></dd>
+        <dt><?php __('Dig'); ?></dt>
+        <dd><?php echo $dig_num; ?></dd>
      </dl>
     </div>
   </div>

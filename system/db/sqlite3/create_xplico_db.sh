@@ -67,6 +67,8 @@ sqlite3 $DIR_BASE/xplico.db < paltalks.sql
 sqlite3 $DIR_BASE/xplico.db < msns.sql
 sqlite3 $DIR_BASE/xplico.db < icmpv6s.sql
 sqlite3 $DIR_BASE/xplico.db < syslogs.sql
+sqlite3 $DIR_BASE/xplico.db < unkfiles.sql
+sqlite3 $DIR_BASE/xplico.db < webymsgs.sql
 
 if [ $def = 0 ]; then
     sqlite3 $DIR_BASE/xplico.db < default.sql

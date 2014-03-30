@@ -45,7 +45,7 @@
                                 )
         );
 
-    function __construct() { 
+    function __construct() {
         $this->validate = array(
             'username' => array(
                 'urule1' => array(

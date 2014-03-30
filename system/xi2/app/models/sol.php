@@ -194,9 +194,19 @@
                               'className' => 'Icmpv6',
                               'dependent' => true
                               ),
+                          'Webymsg' =>
+                          array(
+                              'className' => 'Webymsg',
+                              'dependent' => true
+                              ),
                           'Syslog' =>
                           array(
                               'className' => 'Syslog',
+                              'dependent' => true
+                              ),
+                          'Unkfile' =>
+                          array(
+                              'className' => 'Unkfile',
                               'dependent' => true
                               )
         );

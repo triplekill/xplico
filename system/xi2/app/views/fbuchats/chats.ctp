@@ -20,7 +20,7 @@ Copyright: Gianluca Costa & Andrea de Franceschi 2007-2010, http://www.xplico.or
  <table id="messagelist" summary="Message list" cellspacing="0">
  <tr>
 	<th class="date"><?php echo $paginator->sort(__('Date', true), 'capture_date'); ?></th>
-	<th class="subject"><?php echo $paginator->sort(__('User', true), 'user'); ?></th>
+	<th class="subject"><?php echo $paginator->sort(__('User', true), 'username'); ?></th>
 	<th class="subject"><?php echo $paginator->sort(__('Friend', true), 'friend'); ?></th>
 	<th class="subject"><?php echo $paginator->sort(__('Duration [hh:mm:ss]', true), 'duration'); ?></th>
 	<th class="size"><?php echo $paginator->sort(__('Size', true), 'data_size'); ?></th>
@@ -35,7 +35,7 @@ Copyright: Gianluca Costa & Andrea de Franceschi 2007-2010, http://www.xplico.or
  <?php if ($chat['Fbchat']['first_visualization_user_id']) : ?>
   <tr>
 	<td><?php echo $chat['Fbchat']['capture_date']; ?></td>
-	<td><script type="text/javascript"> var txt="<?php echo $chat['Fbchat']['user']; ?>"; document.write(txt); </script></td>
+	<td><script type="text/javascript"> var txt="<?php echo $chat['Fbchat']['username']; ?>"; document.write(txt); </script></td>
 	<td><a href="#" onclick="popupVetrina('/fbuchats/view/<?php echo $chat['Fbchat']['id']; ?>','scrollbar=auto'); return false"><?php echo $friend; ?></a></td>
 	<td><?php echo $h.":".$m.":".$s; ?></td>
 	<td><?php echo $chat['Fbchat']['data_size']; ?></td>
@@ -44,7 +44,7 @@ Copyright: Gianluca Costa & Andrea de Franceschi 2007-2010, http://www.xplico.or
  <?php else : ?>
   <tr>
         <td><b><?php echo $chat['Fbchat']['capture_date']; ?></b></td>
-        <td><b><script type="text/javascript"> var txt="<?php echo $chat['Fbchat']['user']; ?>"; document.write(txt); </script></b></td>
+        <td><b><script type="text/javascript"> var txt="<?php echo $chat['Fbchat']['username']; ?>"; document.write(txt); </script></b></td>
         <td><b><a href="#" onclick="popupVetrina('/fbuchats/view/<?php echo $chat['Fbchat']['id']; ?>','scrollbar=auto'); return false"><?php echo $friend; ?></a></b></td>
         <td><b><?php echo $h.":".$m.":".$s; ?></b></td>
         <td><b><?php echo $chat['Fbchat']['data_size']; ?></b></td>

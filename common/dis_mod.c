@@ -5,7 +5,7 @@
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2011 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -42,7 +42,6 @@
 #include "log.h"
 #include "config_param.h"
 #include "istypes.h"
-#include "rule.h"
 #include "fthread.h"
 #include "pei.h"
 
@@ -219,7 +218,10 @@ static void ProtCheck(int sig)
     
     for (i=0; i!=prot_tbl_dim; i++) {
         if (prot_tbl[i].flow == TRUE) {
-            prot_tbl[i].tver = TRUE; /* it is not necessary to use the semaphore */
+            if (prot_tbl[i].tver)
+                ProtFlowTimeOutForce(i);
+            else
+                prot_tbl[i].tver = TRUE; /* it is not necessary to use the semaphore */
         }
     }
     
@@ -231,6 +233,9 @@ static void SegFault(int sig)
 {
     int fid;
     const pstack_f *stk;
+    
+    /* default handler */
+    signal(SIGSEGV, SIG_DFL);
 
     LogPrintf(LV_OOPS, "SegFault");
     /* print flow stack of thread */
@@ -252,9 +257,8 @@ static void SegFault(int sig)
 #if 0
     while (1)
         sleep(1);
-#else
-    exit(-1);
 #endif
+    raise(SIGSEGV); /* call default handler*/
 }
 
 
@@ -426,7 +430,7 @@ int DisModLoad(char *file_cfg)
             LogPrintf(LV_ERROR, "Can't load module %s",  dlerror());
             return -1;
         }
-        /* attach funztions */
+        /* attach functions */
         prot_tbl[i].DissecRegist = dlsym(prot_tbl[i].handle, DISMOD_REGIST_FUN);
         if (prot_tbl[i].DissecRegist == NULL) {
             LogPrintf(LV_ERROR, "In module %s don't exist function %s", mod_list[i].path, DISMOD_REGIST_FUN);
@@ -434,21 +438,26 @@ int DisModLoad(char *file_cfg)
         }
         prot_tbl[i].DissectInit = dlsym(prot_tbl[i].handle, DISMOD_INIT_FUN);
         if (prot_tbl[i].DissectInit == NULL) {
-            LogPrintf(LV_ERROR, "In module %s don't exist function %s", mod_list[i].path, DISMOD_INIT_FUN);
+            LogPrintf(LV_ERROR, "In module %s doesn't exist function %s", mod_list[i].path, DISMOD_INIT_FUN);
             return -1;
         }
         prot_tbl[i].DissectLog = dlsym(prot_tbl[i].handle, DISMOD_LOG_FUN);
         if (prot_tbl[i].DissectLog == NULL) {
-            LogPrintf(LV_ERROR, "In module %s don't exist function %s", mod_list[i].path, DISMOD_LOG_FUN);
+            LogPrintf(LV_ERROR, "In module %s doesn't exist function %s", mod_list[i].path, DISMOD_LOG_FUN);
             return -1;
         }
+        prot_tbl[i].FlowHash = dlsym(prot_tbl[i].handle, DISMOD_FLOW_HASH);
+        prot_tbl[i].FlowCmp = dlsym(prot_tbl[i].handle, DISMOD_FLOW_CMP);
+        prot_tbl[i].FlowCmpFree = dlsym(prot_tbl[i].handle, DISMOD_FLOW_CMPFREE);
     }
 
     /* protocol log initializazione and self registration */
     prot_ins = -1;
-    for (i=0; i<mod_num; i++) {
+    for (i=0; i!=mod_num; i++) {
         prot_ins = i;
         prot_tbl[i].DissectLog(i);
+        if (prot_tbl[i].FlowCmp != NULL || prot_tbl[i].FlowHash != NULL || prot_tbl[i].FlowCmpFree != NULL)
+            prot_tbl[i].flow = TRUE;
         prot_tbl[i].DissecRegist(file_cfg);
     }
     prot_ins = -1;
@@ -538,26 +547,26 @@ int DisModLoad(char *file_cfg)
     /* check consistency of dissector packet and flow */
     for (i=0; i<mod_num; i++) {
         if (prot_tbl[i].FlowDis == NULL && prot_tbl[i].grp == TRUE) {
-            LogPrintf(LV_WARNING, "In dissector '%s' don't defined FlowDissector but it's a flow of group",
+            LogPrintf(LV_WARNING, "In dissector '%s' isn't defined FlowDissector but it's a flow of group",
                       prot_tbl[i].name);
         }
         for (j=0; j<prot_tbl[i].stbl_dim; j++) {
             if (prot_tbl[i].PktDis == NULL && prot_tbl[i].dep_num == 0) {
-                LogPrintf(LV_ERROR, "In dissector '%s' don't defined PktDissector",
+                LogPrintf(LV_ERROR, "In dissector '%s' isn't defined PktDissector",
                           prot_tbl[i].name);
                 return -1;
             }
             if (prot_tbl[i].flow == FALSE) {
                 if (prot_tbl[prot_tbl[i].stbl[j].id].PktDis == NULL) {
-                    LogPrintf(LV_ERROR, "In dissector '%s' don't defined PktDissector",
-                              prot_tbl[prot_tbl[i].stbl[j].id].name);
+                    LogPrintf(LV_ERROR, "In dissector '%s' isn't defined PktDissector (%s)",
+                              prot_tbl[prot_tbl[i].stbl[j].id].name, prot_tbl[i].name);
                     return -1;
                 }
             }
             else {
                 if (prot_tbl[prot_tbl[i].stbl[j].id].FlowDis == NULL &&
                     prot_tbl[prot_tbl[i].stbl[j].id].PktDis == NULL) {
-                    LogPrintf(LV_ERROR, "In dissector '%s' don't defined PktDissector and FlowDissector", prot_tbl[prot_tbl[i].stbl[j].id].name);
+                    LogPrintf(LV_ERROR, "In dissector '%s' aren't defined PktDissector and FlowDissector", prot_tbl[prot_tbl[i].stbl[j].id].name);
                     return -1;
                 }
                 if (prot_tbl[prot_tbl[i].stbl[j].id].FlowDis == NULL)
@@ -567,29 +576,20 @@ int DisModLoad(char *file_cfg)
     }
 
     /* rule estrapolation */
-    for (i=0; i<mod_num; i++) {
+    for (i=0; i!=mod_num; i++) {
         if (prot_tbl[i].flow == TRUE) {
-            rule = FALSE;
-            for (j=0; j<prot_tbl[i].rule_num; j++) {
-                res = RuleConvert(&(prot_tbl[i].rule[j]));
-                if (res != 0) {
-                    LogPrintf(LV_WARNING, "In dissector '%s' (%s) the rule '%d' is fallacy",
-                              prot_tbl[i].name, mod_list[i].path, j+1);
-                }
-                else {
-                    rule = TRUE;
-                }
-            }
+            rule = TRUE;
+            if (prot_tbl[i].FlowCmp == NULL || prot_tbl[i].FlowHash == NULL || prot_tbl[i].FlowCmpFree == NULL)
+                rule = FALSE;
             if (rule == FALSE) {
-                LogPrintf(LV_WARNING, "In dissector '%s' (%s) don't exist valid rules");
+                LogPrintf(LV_WARNING, "In dissector '%s' doesn't exist valid rules", prot_tbl[i].name);
                 return -1;
             }
-            prot_tbl[i].rule_sort = RuleSort(prot_tbl[i].rule, prot_tbl[i].rule_num);
         }
     }
 
     /* stack frame real size */
-    for (i=0; i<mod_num; i++) {
+    for (i=0; i!=mod_num; i++) {
         prot_tbl[i].pstack_sz = sizeof(pstack_f) + sizeof(ftval)*prot_tbl[i].info_num;
         LogPrintf(LV_INFO, "'%s' stack frame size: %db with %d info", prot_tbl[i].name, prot_tbl[i].pstack_sz, prot_tbl[i].info_num);
     }
@@ -608,7 +608,7 @@ int DisModInit(void)
 
     for (i=0; i<prot_tbl_dim; i++) {
         if (prot_tbl[i].DissectInit() != 0) {
-            LogPrintf(LV_ERROR, "Protocol '%s' initialization errot.", prot_tbl[i].name);
+            LogPrintf(LV_ERROR, "Protocol '%s' initialization error.", prot_tbl[i].name);
             return -1;
         }
     }
@@ -774,32 +774,19 @@ int ProtName(char *name, char *abbr)
 
 int ProtAddRule(char *rule)
 {
-    int num;
-
     if (prot_ins == -1) {
         LogPrintf(LV_ERROR, "%s can be used only in DissecRegist function", __FUNCTION__);
         return -1;
     }
 
-    /* extend number of rules */
-    num = prot_tbl[prot_ins].rule_num;
-    prot_tbl[prot_ins].rule = xrealloc(prot_tbl[prot_ins].rule, sizeof(flow_rule)*(num+1));
-    prot_tbl[prot_ins].rule_num ++;
-    memset(prot_tbl[prot_ins].rule+num, 0, sizeof(flow_rule));
+    if (prot_tbl[prot_ins].FlowHash == NULL || prot_tbl[prot_ins].FlowCmp == NULL || prot_tbl[prot_ins].FlowCmpFree == NULL) {
+        LogPrintf(LV_FATAL, "The dissector '%s' is too old.", prot_tbl[prot_ins].name);
+        printf("The dissector '%s' is too old.\n", prot_tbl[prot_ins].name);
+        exit(-1);
+
+        return -1;
+    }
     
-    /* insert */
-    prot_tbl[prot_ins].rule[num].rule = xmalloc(strlen(rule)+1);
-    strcpy(prot_tbl[prot_ins].rule[num].rule, rule);
-    prot_tbl[prot_ins].rule[num].cmp = NULL;
-    prot_tbl[prot_ins].rule[num].ncmp = 0;
-    prot_tbl[prot_ins].rule[num].cmp_eq = FALSE;
-    prot_tbl[prot_ins].rule[num].bln = NULL;
-    prot_tbl[prot_ins].rule[num].nbln = 0;
-    prot_tbl[prot_ins].rule[num].nrules = 0;
-
-    /* flow protocol */
-    prot_tbl[prot_ins].flow = TRUE;
-
     return 0;
 }
 

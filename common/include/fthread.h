@@ -32,14 +32,15 @@
 
 #define FTHD_TBL_ELEMENT_DELTA   100
 #define FTHD_STACK_SIZE          (145*1024)
+#define FTHD_STACK_SIZE_PARAM    "THREAD_STACK_SIZE"
+
 
 
 typedef void* (*start_routine)(void*);
 
-int FthreadInit(void);
+int FthreadInit(const char *cfg_file);
 int FthreadCreate(int flow_id, start_routine fun, void *arg);
 void FthreadSync(void);
-void FthreadStackBase(int fthd_id, const void *base);
 int FthreadChFlow(int fthd_id, int flow_id);
 int FthreadFlow(int fthd_id);
 int FthreadSelfFlowId(void);

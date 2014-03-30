@@ -28,6 +28,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/time.h>
+#include <sys/resource.h>
 
 #include "log.h"
 #include "dis_mod.h"
@@ -160,6 +161,39 @@ static int CoreLog(const char *file_cfg)
 }
 
 
+static void SetLimits(void)
+{
+    struct rlimit nlim;
+    int ret = 0;
+    nlim.rlim_max = 65535;
+    nlim.rlim_cur = nlim.rlim_max;
+    //nlim.rlim_max = RLIM_INFINITY;
+    ret += setrlimit(RLIMIT_NOFILE, &nlim);
+    if (ret != 0) {
+        getrlimit(RLIMIT_NOFILE, &nlim);
+        nlim.rlim_cur = nlim.rlim_max;
+        setrlimit(RLIMIT_NOFILE, &nlim);
+        getrlimit(RLIMIT_NOFILE, &nlim);
+        printf("Files limits: %lu/%lu\n", nlim.rlim_cur, nlim.rlim_max);
+    }
+    
+    nlim.rlim_cur = RLIM_INFINITY;
+    nlim.rlim_max = RLIM_INFINITY;
+    ret += setrlimit(RLIMIT_NPROC, &nlim);
+    
+    nlim.rlim_cur = RLIM_INFINITY;
+    nlim.rlim_max = RLIM_INFINITY;
+    ret += setrlimit(RLIMIT_CORE, &nlim);
+    if (ret == 0) {
+        printf("Limits changed\n");
+    }
+    else {
+        printf("Limits not changed\n");
+        sleep(2);
+    }
+}
+
+
 int main(int argc, char *argv[])
 {
     bool graph, capt, help, info, log, cfg_f, version;
@@ -242,6 +276,8 @@ int main(int argc, char *argv[])
         Usage(argv[0], capt, module_name);
         return 0;
     }
+    /* change default limits */
+    SetLimits();
     
     /* common functions initialization (embeded, strutil,...)*/
     CommonLink();
@@ -288,7 +324,7 @@ int main(int argc, char *argv[])
     }
     
     /* Thread function initialization */
-    FthreadInit();
+    FthreadInit(config_file);
 
     /* load capture module */
     if (capt == TRUE) {
@@ -419,6 +455,8 @@ int main(int argc, char *argv[])
     DispatchEnd();
 
     gettimeofday(&end_t, NULL);
+    
+    ReportFilesDescr();
     
     LogPrintf(LV_STATUS, "End. Total elaboration time:  %lus %luus", end_t.tv_sec-start_t.tv_sec+(1000000+end_t.tv_usec-start_t.tv_usec)/1000000, (1000000+end_t.tv_usec-start_t.tv_usec)%1000000);
     ReportSplash();

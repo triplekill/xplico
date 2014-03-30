@@ -283,6 +283,54 @@ static packet* WebmailDissector(packet *pkt)
                 }
             }
         }
+
+        /* Alice Telecom Italia */
+        else if (strstr(msg->host, ".alice.it") != NULL) {
+            if (msg->mtd == HTTP_MT_POST) {
+                if (strstr(msg->uri, "cp/ps/mail/SLcommands/SLEmailBody") != NULL ||
+                    strstr(msg->uri, "cp/ps/mail/SLcommands/SLEmailHeaders") != NULL) {
+                    /* send to manipulator */
+                    WebmailPei(WMAIL_SERVICE_ROSSOALICE, pkt, FALSE);
+                    ins = TRUE;
+                }
+                else if (strstr(msg->uri, "cp/ps/mail/SLcommands/SLSendMessage") != NULL) {
+                    /* send to manipulator */
+                    WebmailPei(WMAIL_SERVICE_ROSSOALICE, pkt, TRUE);
+                    ins = TRUE;
+                }
+            }
+            else { /* GET */
+                if (strstr(msg->uri, "cp/ps/Mail/Downloader") != NULL) {
+                    /* attached file */
+                }
+            }
+        }
+        
+        /* Libero.it webmail */
+        else if (strstr(msg->host, ".libero.it") != NULL) {
+            if (strstr(msg->uri, "&pid=") != NULL) {
+                if (msg->mtd == HTTP_MT_GET && strstr(msg->uri, "commands/LoadMessage") != NULL) { /* email header */
+                    /* send to manipulator */
+                    WebmailPei(WMAIL_SERVICE_LIBERO, pkt, FALSE);
+                    ins = TRUE;
+                }
+                else if (msg->mtd == HTTP_MT_GET && strstr(msg->uri, "MailMessageBody.jsp") != NULL) { /* email body */
+                    /* send to manipulator */
+                    WebmailPei(WMAIL_SERVICE_LIBERO, pkt, FALSE);
+                    ins = TRUE;
+                }
+            }
+            else if (msg->mtd == HTTP_MT_GET && strstr(msg->uri, "/m/wmm/read/") != NULL) { /* email */
+                /* send to manipulator */
+                WebmailPei(WMAIL_SERVICE_LIBERO_MOBI, pkt, FALSE);
+                ins = TRUE;
+            }
+            else if (0 && msg->mtd == HTTP_MT_POST && strstr(msg->uri, "cgi-bin/webmail.cgi") != NULL) { /* old libero webmail */
+                /* send to manipulator */
+                WebmailPei(WMAIL_SERVICE_LIBERO_OLD, pkt, FALSE);
+                ins = TRUE;
+            }
+        }
     }
     
     if (ins == FALSE && HttpPktDis != NULL) {
@@ -308,9 +356,19 @@ int DissecRegist(const char *file_cfg)
     memset(&peic, 0, sizeof(pei_cmpt));
 
     /* protocol name */
-    ProtName("Webmail: AOL, Yahoo!, HOTMAIL, Yahoo! Android, Gmail", "webmail");
+    ProtName("Webmail: AOL, Yahoo!, HOTMAIL, Yahoo! Android, Gmail, RossoAlice, Libero.it", "webmail");
 
     /* http dependence */
+    /* dep: http Rosso Alice Telecom Italia! */
+    dep.name = "http";
+    dep.attr = "http.host";
+    dep.type = FT_STRING;
+    dep.op = FT_OP_REX;
+    dep.val.str = DMemMalloc(strlen(WMAIL_HOST_NAME_ROSSOALICE_REX)+1);
+    strcpy(dep.val.str, WMAIL_HOST_NAME_ROSSOALICE_REX);
+    ProtDep(&dep);
+    DMemFree(dep.val.str);
+    
     /* dep: http Yahoo! */
     dep.name = "http";
     dep.attr = "http.host";
@@ -363,6 +421,26 @@ int DissecRegist(const char *file_cfg)
     dep.op = FT_OP_REX;
     dep.val.str = DMemMalloc(strlen(WMAIL_HOST_NAME_HOTMAIL_REX)+1);
     strcpy(dep.val.str, WMAIL_HOST_NAME_HOTMAIL_REX);
+    ProtDep(&dep);
+    DMemFree(dep.val.str);
+
+    /* dep: http libero.it */
+    dep.name = "http";
+    dep.attr = "http.host";
+    dep.type = FT_STRING;
+    dep.op = FT_OP_REX;
+    dep.val.str = DMemMalloc(strlen(WMAIL_HOST_NAME_LIBERO_REX)+1);
+    strcpy(dep.val.str, WMAIL_HOST_NAME_LIBERO_REX);
+    ProtDep(&dep);
+    DMemFree(dep.val.str);
+    /* libero old */
+    dep.val.str = DMemMalloc(strlen(WMAIL_HOST_NAME_LIBERO_OLD_REX)+1);
+    strcpy(dep.val.str, WMAIL_HOST_NAME_LIBERO_OLD_REX);
+    //ProtDep(&dep);
+    DMemFree(dep.val.str);
+    /* libero mobile */
+    dep.val.str = DMemMalloc(strlen(WMAIL_HOST_NAME_LIBERO_MOBI_REX)+1);
+    strcpy(dep.val.str, WMAIL_HOST_NAME_LIBERO_MOBI_REX);
     ProtDep(&dep);
     DMemFree(dep.val.str);
 

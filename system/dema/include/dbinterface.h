@@ -51,22 +51,29 @@
 #define DBINT_QUERY_DELETE_RM_SOL "DELETE FROM sols WHERE rm='1' AND pol_id='%d';"
 
 /* mysql */
-#define DBINT_1_QUERY_START_T_TEMPLATE  "UPDATE sols SET start_time=FROM_UNIXTIME(%lu) WHERE id='%d' AND start_time='0000-00-00 00:00:00';"
+#define DBINT_1_QUERY_START_T_TEMPLATE  "UPDATE sols SET start_time=FROM_UNIXTIME(%lu) WHERE id='%d' AND start_time='1990-01-01 00:00:00';"
 #define DBINT_1_QUERY_END_T_TEMPLATE    "UPDATE sols SET end_time=FROM_UNIXTIME(%lu) WHERE id='%d';"
 #define DBINT_1_QUERY_INPUT_FILE        "INSERT INTO inputs (pol_id, sol_id, start_time, end_time, data_size, filename, md5, sha1) VALUES (%i, %i, FROM_UNIXTIME(%lu), FROM_UNIXTIME(%lu), %lu, '%s', '%s', '%s');"
 #define DBINT_1_QUERY_FIX_STATUS        "UPDATE sols SET status='DECODING COMPLETED'"
 
 /* sqlite 3 */
 #define DBINT_DB_FILE_DEFAULT           "xplico.db" /* DB file */
-#define DBINT_2_QUERY_START_T_TEMPLATE  "UPDATE sols SET start_time="XPCAP_DATE" WHERE id='%d' AND start_time='0000-00-00 00:00:00';"
+#define DBINT_2_QUERY_START_T_TEMPLATE  "UPDATE sols SET start_time="XPCAP_DATE" WHERE id='%d' AND start_time='1990-01-01 00:00:00';"
 #define DBINT_2_QUERY_END_T_TEMPLATE    "UPDATE sols SET end_time="XPCAP_DATE" WHERE id='%d';"
 #define DBINT_2_QUERY_INPUT_FILE        "INSERT INTO inputs (pol_id, sol_id, start_time, end_time, data_size, filename, md5, sha1) VALUES (%i, %i, "XPCAP_DATE", "XPCAP_DATE", %lu, '%s', '%s', '%s');"
 #define DBINT_2_QUERY_FIX_STATUS        "UPDATE sols SET status='DECODING COMPLETED'"
 
+/* postgres */
+#define DBINT_3_QUERY_START_T_TEMPLATE  "UPDATE sols SET start_time=to_timestamp(%ld) WHERE id='%d' AND start_time='1990-01-01 00:00:00';"
+#define DBINT_3_QUERY_END_T_TEMPLATE    "UPDATE sols SET end_time=to_timestamp(%ld) WHERE id='%d';"
+#define DBINT_3_QUERY_INPUT_FILE        "INSERT INTO inputs (pol_id, sol_id, start_time, end_time, data_size, filename, md5, sha1) VALUES (%i, %i, to_timestamp(%ld), to_timestamp(%ld), %lu, '%s', '%s', '%s');"
+#define DBINT_3_QUERY_FIX_STATUS        "UPDATE sols SET status='DECODING COMPLETED'"
+
+
 typedef enum {
     DB_MYSQL,
     DB_SQLITE,
-    DB_POSTGRES
+    DB_POSTGRESQL
 } dbtype;
 
 

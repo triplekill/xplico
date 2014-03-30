@@ -105,7 +105,7 @@ static void* DispatchAgent(void *arg)
             DispInsPei(pl->ppei);
 
             /* free memory */
-            if (pl->ppei->ret == FALSE) {
+            if (pret == FALSE) {
                 PeiFree(pl->ppei);
             }
         }
@@ -509,9 +509,12 @@ const char *DispatManipModulesCfg(void)
 }
 
 
-int DispatchStatus(void)
+int DispatchStatus(FILE *fp)
 {
-    printf("Pei inserted: %lu\nPei to be insert: %lu\n", pei_ins, pei_pend);
+    if (fp == NULL)
+        printf("Pei inserted: %lu\nPei to be insert: %lu\n", pei_ins, pei_pend);
+    else
+        fprintf(fp, "Pei inserted: %lu\nPei to be insert: %lu\n", pei_ins, pei_pend);
     
     return 0;
 }
@@ -586,6 +589,12 @@ int PeiSetReturn(pei *ppei, bool ret)
     ppei->ret = ret;
     
     return 0;
+}
+
+
+bool PeiGetReturn(pei *ppei)
+{    
+    return ppei->ret;
 }
 
 
@@ -761,7 +770,7 @@ int PeiAddComponent(pei *ppei, pei_component *comp)
 int PeiAddStkGrp(pei *ppei, const pstack_f *add)
 {
     pstack_f *new, *nxt;
-    pstack_f *flame_stk, *stk;
+    const pstack_f *flame_stk, *stk;
     int flow_par;
     
     /* check if the flow/stack is already insert */
@@ -932,13 +941,14 @@ int PeiDestroy(pei *ppei)
         DMemFree(cmpn);
         cmpn = nxt;
     }
-
+    ppei->components = NULL;
+    
     /* free protocol stack */
-    if (ppei->stack != NULL)
+    if (ppei->stack != NULL) {
         ProtDelFrame(ppei->stack);
-
-    DMemFree(ppei);
-
+        ppei->stack = NULL;
+    }
+    
     return 0;
 }
 
@@ -978,4 +988,3 @@ void PeiPrint(const pei *ppei)
     }
     xfree(tv);
 }
-

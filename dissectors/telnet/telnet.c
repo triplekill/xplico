@@ -76,7 +76,7 @@ static int TelnetSkipCommand(unsigned char *ptr, unsigned char *end)
     int len;
     
     len = 0;
-    while(*ptr == 0xff && ptr < end) {
+    while (ptr < end && *ptr == 0xff) {
         /* sub option 0xff 0xfa ... ... 0xff 0xf0 */
         if (*(ptr + 1) == 0xfa) {
             ptr += 1;
@@ -368,7 +368,8 @@ static bool TelnetVerifyCheck(int flow_id, bool check)
     packet *pkt;
     short cnt, cnt_lim;
     long offset;
-
+    ftval lost;
+    
     cnt = 0;
     pkt = FlowGetPktCp(flow_id);
     /* numer of packet to verify */
@@ -390,9 +391,10 @@ static bool TelnetVerifyCheck(int flow_id, bool check)
             pkt = FlowGetPktCp(flow_id);
         } while (pkt != NULL);
     }
-    else {
+    else if (pkt != NULL) {
         do {
-            if (pkt != NULL && pkt->data != NULL && pkt->len != 0) {
+            ProtGetAttr(pkt->stk, lost_id, &lost);
+            if (lost.uint8 == FALSE && pkt->data != NULL && pkt->len != 0) {
                 offset = TelnetSkipCommand((unsigned char *)(pkt->data), 
                                            (unsigned char *)(pkt->data + pkt->len));
                 if (offset == pkt->len) {

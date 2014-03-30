@@ -60,10 +60,10 @@
 #define XS_MSN_DIR_PATH       XS_DB_INSTALL_DIR"/pol_%d/sol_%d/msn"
 #define XS_ICMPv6_DIR_PATH    XS_DB_INSTALL_DIR"/pol_%d/sol_%d/icmpv6"
 #define XS_SYSLOG_DIR_PATH    XS_DB_INSTALL_DIR"/pol_%d/sol_%d/syslog"
+#define XS_WEBYMSG_DIR_PATH   XS_DB_INSTALL_DIR"/pol_%d/sol_%d/webymsg"
+#define XS_UNKFILE_DIR_PATH   XS_DB_INSTALL_DIR"/pol_%d/sol_%d/unkfile"
 
 #define XS_MGCP_DIR_PATH      XS_DB_INSTALL_DIR"/pol_%d/sol_%d/mgcp"
-#define XS_WEBMSN_DIR_PATH    XS_DB_INSTALL_DIR"/pol_%d/sol_%d/webmsn"
-#define XS_UNKFILE_DIR_PATH   XS_DB_INSTALL_DIR"/pol_%d/sol_%d/unkfile"
 
 
 /* db */
@@ -127,7 +127,7 @@
 #define ST_PLT                 16
 #define ST_MSN                 17
 #define ST_MGCP                18
-#define ST_MSN_WEB             19
+#define ST_YAHOO_WEB           19
 #define ST_DIG_FILE            20
 
 
@@ -167,9 +167,9 @@ typedef struct {
 #define XS_QUERY_NNTP_TEMPLATE       "INSERT INTO nntp_groups (sol_id, pol_id, source_id, name) VALUES (%i, %i, %i, '%s')"
 #define XS_QUERY_NNTP_SEARCH         "SELECT id FROM nntp_groups WHERE sol_id=%d and name='%s'"
 #define XS_QUERY_NNTP_ARTCL_TEMPLATE "INSERT INTO nntp_articles (sol_id, pol_id, source_id, nntp_group_id, capture_date, data_size, flow_info, receive, only_body, sender, receivers, subject, mime_path) VALUES (%i, %i, %i, %lu, "XPCAP_DATE", %lu, '%s', %i, %i, '%s', '%s', '%s', '%s')"
-#define XS_QUERY_FBWCHAT_TEMPLATE    "INSERT INTO fbuchats (sol_id, pol_id, source_id, user, uid) VALUES (%i, %i, %i, '%s', '%s')"
+#define XS_QUERY_FBWCHAT_TEMPLATE    "INSERT INTO fbuchats (sol_id, pol_id, source_id, username, uid) VALUES (%i, %i, %i, '%s', '%s')"
 #define XS_QUERY_FBWCHAT_SEARCH      "SELECT id FROM fbuchats WHERE sol_id=%d and uid='%s'"
-#define XS_QUERY_FBWCHAT_CHAT        "INSERT INTO fbchats (sol_id, pol_id, source_id, fbuchat_id, capture_date, data_size, flow_info, user, friend, chat) VALUES (%i, %i, %i, %lu, "XPCAP_DATE", %lu, '%s', '%s', '%s', '%s')"
+#define XS_QUERY_FBWCHAT_CHAT        "INSERT INTO fbchats (sol_id, pol_id, source_id, fbuchat_id, capture_date, data_size, flow_info, username, friend, chat) VALUES (%i, %i, %i, %lu, "XPCAP_DATE", %lu, '%s', '%s', '%s', '%s')"
 #define XS_QUERY_FBWCHAT_UPDATE      "UPDATE fbchats SET flow_info='%s', chat='%s', data_size=%lu, duration=%lu WHERE id=%lu"
 #define XS_QUERY_TELNET_TEMPLATE     "INSERT INTO telnets (sol_id, pol_id, source_id, capture_date, flow_info, hostname, username, password, cmd, cmd_size) VALUES (%i, %i, %i, "XPCAP_DATE", '%s', '%s', '%s', '%s', '%s', %lu)"
 #define XS_QUERY_WBAMIL_TEMPLATE     "INSERT INTO webmails (sol_id, pol_id, source_id, capture_date, data_size, flow_info, receive, service, messageid, sender, receivers, cc_receivers, subject, mime_path, txt_path, html_path, relevance) VALUES (%i, %i, %i, "XPCAP_DATE", %lu, '%s', %i, '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', 100)"
@@ -188,11 +188,9 @@ typedef struct {
 #define XS_QUERY_MSN_TEMPLATE        "INSERT INTO msn_chats (sol_id, pol_id, source_id, capture_date, flow_info, chat, end_date, chat_path, duration) VALUES (%i, %i, %i, "XPCAP_DATE", '%s', '%s', "XPCAP_DATE", '%s', '%s')"
 #define XS_QUERY_ICMPv6_TEMPLATE     "INSERT INTO icmpv6s (sol_id, pol_id, capture_date, flow_info, mac, ip) VALUES (%i, %i, "XPCAP_DATE", '%s', '%s', '%s')"
 #define XS_QUERY_SYSLOG_TEMPLATE     "INSERT INTO syslogs (sol_id, pol_id, source_id, capture_date, flow_info, hosts, log, log_size) VALUES (%i, %i, %i, "XPCAP_DATE", '%s', '%s', '%s', %lu)"
-
-#define XS_QUERY_MGCP_TEMPLATE       "INSERT INTO mgcps (sol_id, pol_id, source_id, capture_date, flow_info, from_addr, to_addr, ucaller, ucalled, umix, duration, commands) VALUES (%i, %i, %i, "XPCAP_DATE", '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')"
-#define XS_QUERY_WEBMSN_CHAT         "INSERT INTO webmsns (sol_id, pol_id, source_id, capture_date, data_size, flow_info, user, friend, chat) VALUES (%i, %i, %i, "XPCAP_DATE", %lu, '%s', '%s', '%s', '%s')"
-#define XS_QUERY_WEBMSN_UPDATE       "UPDATE webmsns SET flow_info='%s', chat='%s', data_size=%lu, duration=%lu WHERE id=%lu"
+#define XS_QUERY_WEBYMSG_CHAT        "INSERT INTO webymsgs (sol_id, pol_id, source_id, capture_date, data_size, flow_info, username, friend, chat) VALUES (%i, %i, %i, "XPCAP_DATE", %lu, '%s', '%s', '%s', '%s')"
+#define XS_QUERY_WEBYMSG_UPDATE      "UPDATE webymsgs SET flow_info='%s', chat='%s', data_size=%lu, duration=%lu WHERE id=%lu"
 #define XS_QUERY_UNKFILE_TEMPLATE    "INSERT INTO unkfiles (sol_id, pol_id, source_id, capture_date, flow_info, url, file_path, file_name, fsize, file_type) VALUES (%i, %i, %i, "XPCAP_DATE", '%s', '%s', '%s', '%s', %lu, '%s')"
-
+#define XS_QUERY_MGCP_TEMPLATE       "INSERT INTO mgcps (sol_id, pol_id, source_id, capture_date, flow_info, from_addr, to_addr, ucaller, ucalled, umix, duration, commands) VALUES (%i, %i, %i, "XPCAP_DATE", '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')"
 
 #endif /* __LITE_H__ */

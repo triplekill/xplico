@@ -75,6 +75,7 @@ struct _pei {
 int PeiInit(pei *ppei);
 int PeiNew(pei **ppei, int prot_id);
 int PeiSetReturn(pei *ppei, bool ret);
+bool PeiGetReturn(pei *ppei);
 int PeiParent(pei *ppei, pei *ppei_parent);
 int PeiCapTime(pei *ppei, time_t time_cap);
 int PeiDecodeTime(pei *ppei, time_t time_dec);

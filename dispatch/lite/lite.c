@@ -6,7 +6,7 @@
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2012 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -255,11 +255,11 @@ static int pei_mgcp_audio_to;
 static int pei_mgcp_audio_mix;
 static int pei_mgcp_duration;
 /* web msn chat */
-static int webmsn_id;
-static int pei_webmsn_user_id;
-static int pei_webmsn_friend_id;
-static int pei_webmsn_chat_id;
-static int pei_webmsn_duration_id;
+static int webymsg_id;
+static int pei_webymsg_user_id;
+static int pei_webymsg_friend_id;
+static int pei_webymsg_chat_id;
+static int pei_webymsg_duration_id;
 /* syslog */
 static int syslog_id;
 static int pei_syslog_host_id;
@@ -2997,17 +2997,20 @@ static int DispHttpFile(pei *ppei)
 
     /* compose query and insert record */
     if (file) {
+        rep[0] = repb[0] = '\0';
         /* new paths */
         name = strrchr(file, '/');
         name++;
         sprintf(rep, XS_HTTPFILE_DIR_PATH"/%s", pol, sess, name);
         rename(file, rep);
         DispFilePaths(pol, rep);
-
-        path = strrchr(parts, '/');
-        path++;
-        sprintf(repb, XS_HTTPFILE_DIR_PATH"/%s", pol, sess, path);
-        rename(parts, repb);
+        
+        if (parts != NULL) {
+            path = strrchr(parts, '/');
+            path++;
+            sprintf(repb, XS_HTTPFILE_DIR_PATH"/%s", pol, sess, path);
+            rename(parts, repb);
+        }
         
         /* flow info */
         sprintf(flow_info, XS_HTTPFILE_DIR_PATH"/flow_%s.xml", pol, sess, name);
@@ -3145,7 +3148,7 @@ static int DispGrbTcp(pei *ppei)
             }
             else {
                 /* flow info */
-                sprintf(flow_info, XS_GRBTCP_DIR_PATH"/flow_%s_%lu_%p.xml", pol, sess, dst, time(NULL), dst);
+                sprintf(flow_info, XS_GRBTCP_DIR_PATH"/flow_%p_%x_%lu_%p.xml", pol, sess, dst, dst[0], time(NULL), dst);
                 strcpy(rep, "None");
             }
             DispFlowInfo(flow_info, ppei->stack);
@@ -3288,7 +3291,7 @@ static int DispGrbUdp(pei *ppei)
         }
         else {
             /* flow info */
-            sprintf(flow_info, XS_GRBUDP_DIR_PATH"/flow_%s_%lu_%p.xml", pol, sess, dst, time(NULL), dst);
+            sprintf(flow_info, XS_GRBUDP_DIR_PATH"/flow_%p_%x_%lu_%p.xml", pol, sess, dst, dst[0], time(NULL), dst);
             strcpy(rep, "None");
         }
         DispFlowInfo(flow_info, ppei->stack);
@@ -4443,7 +4446,7 @@ static int DispMgcp(pei *ppei)
 }
 
 
-static int DispWebMsn(pei *ppei)
+static int DispWebYmsg(pei *ppei)
 {
     pei_component *cmpn;
     char query[XS_QUERY_DIM];
@@ -4512,17 +4515,17 @@ static int DispWebMsn(pei *ppei)
     duration = 0; /* duration 0 sec */
     cmpn = ppei->components;
     while (cmpn != NULL) {
-        if (cmpn->eid == pei_webmsn_user_id) {
+        if (cmpn->eid == pei_webymsg_user_id) {
             user = cmpn->strbuf;
         }
-        else if (cmpn->eid == pei_webmsn_friend_id) {
+        else if (cmpn->eid == pei_webymsg_friend_id) {
             friend = cmpn->strbuf;
         }
-        else if (cmpn->eid == pei_webmsn_chat_id) {
+        else if (cmpn->eid == pei_webymsg_chat_id) {
             chat = cmpn->file_path;
             chtsize = cmpn->file_size;
         }
-        else if (cmpn->eid == pei_webmsn_duration_id) {
+        else if (cmpn->eid == pei_webymsg_duration_id) {
             duration = atol(cmpn->strbuf);
         }
         cmpn = cmpn->next;
@@ -4538,17 +4541,17 @@ static int DispWebMsn(pei *ppei)
     /* new path */
     name = strrchr(chat, '/');
     name++;
-    sprintf(rep, XS_WEBMSN_DIR_PATH"/%s", pol, sess, name);
+    sprintf(rep, XS_WEBYMSG_DIR_PATH"/%s", pol, sess, name);
     if (ppei->ret == TRUE) {
         if (ppei->id == 0) {
             DispCopy(chat, rep, FALSE);
             DispFilePaths(pol, rep);
             
             /* flow info */
-            sprintf(flow_info, XS_WEBMSN_DIR_PATH"/flow_%s.xml", pol, sess, name);
+            sprintf(flow_info, XS_WEBYMSG_DIR_PATH"/flow_%s.xml", pol, sess, name);
             DispFlowInfo(flow_info, ppei->stack);
             /* query */
-            sprintf(query, XS_QUERY_WEBMSN_CHAT, sess, pol, src_id, PEI_TIME(ppei->time_cap), (unsigned long)chtsize, flow_info, DispLabelCnv(user, dst_a), DispLabelCnv(friend, dst_b), rep);
+            sprintf(query, XS_QUERY_WEBYMSG_CHAT, sess, pol, src_id, PEI_TIME(ppei->time_cap), (unsigned long)chtsize, flow_info, DispLabelCnv(user, dst_a), DispLabelCnv(friend, dst_b), rep);
             if (DispQuery(query, &rid) != 0) {
                 printf("query: %s\n", query);
             }
@@ -4561,10 +4564,10 @@ static int DispWebMsn(pei *ppei)
             DispCopy(chat, rep, FALSE);
             DispFilePaths(pol, rep);
             /* flow info */
-            sprintf(flow_info, XS_WEBMSN_DIR_PATH"/flow_%s.xml", pol, sess, name);
+            sprintf(flow_info, XS_WEBYMSG_DIR_PATH"/flow_%s.xml", pol, sess, name);
             DispFlowInfo(flow_info, ppei->stack);
             /* query */
-            sprintf(query, XS_QUERY_WEBMSN_UPDATE, flow_info, rep, (unsigned long)chtsize, duration, ppei->id);
+            sprintf(query, XS_QUERY_WEBYMSG_UPDATE, flow_info, rep, (unsigned long)chtsize, duration, ppei->id);
             if (DispQuery(query, NULL) != 0) {
                 printf("query: %s\n", query);
             }
@@ -4575,10 +4578,10 @@ static int DispWebMsn(pei *ppei)
         DispCopy(chat, rep, TRUE);
         DispFilePaths(pol, rep);
         /* flow info */
-        sprintf(flow_info, XS_WEBMSN_DIR_PATH"/flow_%s.xml", pol, sess, name);
+        sprintf(flow_info, XS_WEBYMSG_DIR_PATH"/flow_%s.xml", pol, sess, name);
         DispFlowInfo(flow_info, ppei->stack);
         /* query */
-        sprintf(query, XS_QUERY_WEBMSN_UPDATE, flow_info, rep, (unsigned long)chtsize, duration, ppei->id);
+        sprintf(query, XS_QUERY_WEBYMSG_UPDATE, flow_info, rep, (unsigned long)chtsize, duration, ppei->id);
         if (DispQuery(query, NULL) != 0) {
             printf("query: %s\n", query);
         }
@@ -4989,12 +4992,12 @@ int DispInit(const char *cfg_file)
         pei_mgcp_duration = ProtPeiComptId(mgcp_id, "duration");
     }
     
-    webmsn_id = ProtId("webmsn");
-    if (webmsn_id != -1) {
-        pei_webmsn_user_id = ProtPeiComptId(webmsn_id, "user");
-        pei_webmsn_friend_id = ProtPeiComptId(webmsn_id, "friend");
-        pei_webmsn_chat_id = ProtPeiComptId(webmsn_id, "chat");
-        pei_webmsn_duration_id = ProtPeiComptId(webmsn_id, "duration");
+    webymsg_id = ProtId("webymsg");
+    if (webymsg_id != -1) {
+        pei_webymsg_user_id = ProtPeiComptId(webymsg_id, "user");
+        pei_webymsg_friend_id = ProtPeiComptId(webymsg_id, "friend");
+        pei_webymsg_chat_id = ProtPeiComptId(webymsg_id, "chat");
+        pei_webymsg_duration_id = ProtPeiComptId(webymsg_id, "duration");
     }
     
     syslog_id = ProtId("syslog");
@@ -5129,8 +5132,8 @@ int DispInsPei(pei *ppei)
         else if (ppei->prot_id == mgcp_id) {
             ret = DispMgcp(ppei);
         }
-        else if (ppei->prot_id == webmsn_id) {
-            ret = DispWebMsn(ppei);
+        else if (ppei->prot_id == webymsg_id) {
+            ret = DispWebYmsg(ppei);
         }
         else if (ppei->prot_id == syslog_id) {
             ret = DispSyslog(ppei);

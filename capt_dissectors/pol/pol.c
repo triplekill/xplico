@@ -46,7 +46,7 @@
 #include "dispatch.h"
 #include "snoop.h"
 
-#define DISP_PEI_MAX_QUEUE    500
+#define DISP_PEI_MAX_QUEUE    1500
 
 /* external crash info */
 extern unsigned long crash_pkt_cnt; 

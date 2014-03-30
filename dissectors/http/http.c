@@ -5,10 +5,7 @@
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2012 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
- *
- * based on: packet-http.c of Wireshark
- *   Copyright 1998 Gerald Combs
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -343,7 +340,6 @@ static http_mthd HttpReqMethod(const char *data, int linelen, bool test)
 {
     const char *ptr;
     int	index = 0;
-    int prefix_len = 0;
     char *unkn;
 
     /*
@@ -356,7 +352,6 @@ static http_mthd HttpReqMethod(const char *data, int linelen, bool test)
         if (strncmp(data, "M-", 2) == 0 || strncmp(data, "\r\n", 2) == 0) { /* \r\n necesary for bug in client POST */
             data += 2;
             linelen -= 2;
-            prefix_len = 2;
         }
     }
     
@@ -379,102 +374,64 @@ static http_mthd HttpReqMethod(const char *data, int linelen, bool test)
     }
 
     /* Check the methods that have same length */
-    switch (index) {
-    case 3:
+    switch (data[0]) {
+    case 'G':
         if (strncmp(data, "GET", index) == 0) {
             return HTTP_MT_GET;
+        }
+        break;
+        
+    case 'P':
+        if (strncmp(data, "POST", index) == 0) {
+            return HTTP_MT_POST;
         }
         else if (strncmp(data, "PUT", index) == 0) {
             return HTTP_MT_PUT;
         }
-#if 0
-	else if (strncmp(data, "ICY", index) == 0) {
-            return HTTP_MT_ICY;
-        }
-#endif
-        break;
-
-    case 4:
-        if (strncmp(data, "COPY", index) == 0) {
-            return HTTP_MT_COPY;
-        }
-        else if (strncmp(data, "HEAD", index) == 0) {
-            return HTTP_MT_HEAD;
-        }
-        else if (strncmp(data, "LOCK", index) == 0) {
-            return HTTP_MT_LOCK;
-        }
-        else if (strncmp(data, "MOVE", index) == 0) {
-            return HTTP_MT_MOVE;
-        }
         else if (strncmp(data, "POLL", index) == 0) {
             return HTTP_MT_POLL;
         }
-        else if (strncmp(data, "POST", index) == 0) {
-            return HTTP_MT_POST;
+        else if (strncmp(data, "PROPFIND", index) == 0) {
+            return HTTP_MT_PROPFIND;
+        }
+        else if (strncmp(data, "PROPPATCH", index) == 0) {
+            return HTTP_MT_PROPPATCH;
+        }
+        else if (strncmp(data, "PATCH", index) == 0) {
+            return HTTP_MT_PATCH;
         }
         break;
-
-    case 5:
+        
+    case 'B':
         if (strncmp(data, "BCOPY", index) == 0) {
             return HTTP_MT_BCOPY;
         }
         else if (strncmp(data, "BMOVE", index) == 0) {
             return HTTP_MT_BMOVE;
         }
-        else if (strncmp(data, "MKCOL", index) == 0) {
-            return HTTP_MT_MKCOL;
-        }
-        else if (strncmp(data, "TRACE", index) == 0) {
-            return HTTP_MT_TRACE;
-        }
-        else if (strncmp(data, "LABEL", index) == 0) {  /* RFC 3253 8.2 */
-            return HTTP_MT_LABEL;
-        }
-        else if (strncmp(data, "MERGE", index) == 0) {  /* RFC 3253 11.2 */
-            return HTTP_MT_MERGE;
-        }
-        break;
-
-    case 6:
-        if (strncmp(data, "DELETE", index) == 0) {
-            return HTTP_MT_DELETE;
-        }
-        else if (strncmp(data, "SEARCH", index) == 0) {
-            return HTTP_MT_SEARCH;
-        }
-        else if (strncmp(data, "UNLOCK", index) == 0) {
-            return HTTP_MT_UNLOCK;
-        }
-        else if (strncmp(data, "REPORT", index) == 0) {  /* RFC 3253 3.6 */
-            return HTTP_MT_REPORT;
-        }
-        else if (strncmp(data, "UPDATE", index) == 0) {  /* RFC 3253 7.1 */
-            return HTTP_MT_UPDATE;
-        }
-        else if (strncmp(data, "NOTIFY", index) == 0) {
-            return HTTP_MT_NOTIFY;
-        }
-        break;
-
-    case 7:
-        if (strncmp(data, "BDELETE", index) == 0) {
+        else if (strncmp(data, "BDELETE", index) == 0) {
             return HTTP_MT_BDELETE;
+        }
+        else  if (strncmp(data, "BPROPFIND", index) == 0) {
+            return HTTP_MT_BPROPFIND;
+        }
+        else if (strncmp(data, "BPROPPATCH", index) == 0) {
+            return HTTP_MT_BPROPPATCH;
+        }
+        else if (strncmp(data, "BASELINE-CONTROL", index) == 0) {  /* RFC 3253 12.6 */
+            return HTTP_MT_BASELINE_CONTROL;
+        }
+        break;
+        
+    case 'C':
+        if (strncmp(data, "COPY", index) == 0) {
+            return HTTP_MT_COPY;
         }
         else if (strncmp(data, "CONNECT", index) == 0) {
             return HTTP_MT_CONNECT;
         }
-        else if (strncmp(data, "OPTIONS", index) == 0) {
-            return HTTP_MT_OPTIONS;
-        }
         else if (strncmp(data, "CHECKIN", index) == 0) {  /* RFC 3253 4.4, 9.4 */
             return HTTP_MT_CHECKIN;
-        }
-        break;
-
-    case 8:
-        if (strncmp(data, "PROPFIND", index) == 0) {
-            return HTTP_MT_PROPFIND;
         }
         else if (strncmp(data, "CHECKOUT", index) == 0) { /* RFC 3253 4.3, 9.3 */
             return HTTP_MT_CHECKOUT;
@@ -485,37 +442,111 @@ static http_mthd HttpReqMethod(const char *data, int linelen, bool test)
         }
         */
         break;
-
-    case 9:
-        if (strncmp(data, "SUBSCRIBE", index) == 0) {
-            return HTTP_MT_SUBSCRIBE;
-        }
-        else if (strncmp(data, "PROPPATCH", index) == 0) {
-            return HTTP_MT_PROPPATCH;
-        }
-        else  if (strncmp(data, "BPROPFIND", index) == 0) {
-            return HTTP_MT_BPROPFIND;
+        
+    case 'D':
+        if (strncmp(data, "DELETE", index) == 0) {
+            return HTTP_MT_DELETE;
         }
         break;
-
-    case 10:
-        if (strncmp(data, "BPROPPATCH", index) == 0) {
-            return HTTP_MT_BPROPPATCH;
+        
+    case 'H':
+        if (strncmp(data, "HEAD", index) == 0) {
+            return HTTP_MT_HEAD;
         }
-        else if (strncmp(data, "UNCHECKOUT", index) == 0) {  /* RFC 3253 4.5 */
-            return HTTP_MT_UNCHECKOUT;
+        break;
+        
+#if 0
+    case 'I':
+        if (strncmp(data, "ICY", index) == 0) {
+            return HTTP_MT_ICY;
+        }
+        break;
+#endif
+        
+    case 'L':
+        if (strncmp(data, "LOCK", index) == 0) {
+            return HTTP_MT_LOCK;
+        }
+        else if (strncmp(data, "LINK", index) == 0) {
+            return HTTP_MT_LINK;
+        }
+        else if (strncmp(data, "LABEL", index) == 0) {  /* RFC 3253 8.2 */
+            return HTTP_MT_LABEL;
+        }
+        break;
+        
+    case 'M':
+        if (strncmp(data, "MOVE", index) == 0) {
+            return HTTP_MT_MOVE;
+        }
+        else if (strncmp(data, "MKCOL", index) == 0) {
+            return HTTP_MT_MKCOL;
+        }
+        else if (strncmp(data, "MERGE", index) == 0) {  /* RFC 3253 11.2 */
+            return HTTP_MT_MERGE;
         }
         else if (strncmp(data, "MKACTIVITY", index) == 0) {  /* RFC 3253 13.5 */
             return HTTP_MT_MKACTIVITY;
         }
-        break;
-
-    case 11:
-        if (strncmp(data, "MKWORKSPACE", index) == 0) {  /* RFC 3253 6.3 */
+        else if (strncmp(data, "MKWORKSPACE", index) == 0) {  /* RFC 3253 6.3 */
             return HTTP_MT_MKWORKSPACE;
+        }
+        break;
+        
+    case 'N':
+        if (strncmp(data, "NOTIFY", index) == 0) {
+            return HTTP_MT_NOTIFY;
+        }
+        break;
+        
+    case 'O':
+        if (strncmp(data, "OPTIONS", index) == 0) {
+            return HTTP_MT_OPTIONS;
+        }
+        break;
+        
+    case 'S':
+        if (strncmp(data, "SEARCH", index) == 0) {
+            return HTTP_MT_SEARCH;
+        }
+        else if (strncmp(data, "SUBSCRIBE", index) == 0) {
+            return HTTP_MT_SUBSCRIBE;
+        }
+        break;
+        
+    case 'T':
+        if (strncmp(data, "TRACE", index) == 0) {
+            return HTTP_MT_TRACE;
+        }
+        break;
+        
+    case 'U':
+        if (strncmp(data, "UNLOCK", index) == 0) {
+            return HTTP_MT_UNLOCK;
+        }
+        else if (strncmp(data, "UNLINK", index) == 0) {
+            return HTTP_MT_UNLINK;
+        }
+        else if (strncmp(data, "UPDATE", index) == 0) {  /* RFC 3253 7.1 */
+            return HTTP_MT_UPDATE;
+        }
+        else if (strncmp(data, "UNCHECKOUT", index) == 0) {  /* RFC 3253 4.5 */
+            return HTTP_MT_UNCHECKOUT;
         }
         else if (strncmp(data, "UNSUBSCRIBE", index) == 0) {
             return HTTP_MT_UNSUBSCRIBE;
+        }
+        break;
+        
+    case 'V':
+        if (strncmp(data, "VERSION-CONTROL", index) == 0) {  /* RFC 3253 3.5 */
+            return HTTP_MT_VERSION_CONTROL;
+        }
+        break;
+        
+    case 'R':
+        if (strncmp(data, "REPORT", index) == 0) {  /* RFC 3253 3.6 */
+            return HTTP_MT_REPORT;
         }
         /*
         else if (strncmp(data, "RPC_CONNECT", index) == 0) {
@@ -523,23 +554,8 @@ static http_mthd HttpReqMethod(const char *data, int linelen, bool test)
         }
         */
         break;
-
-    case 15:
-        if (strncmp(data, "VERSION-CONTROL", index) == 0) {  /* RFC 3253 3.5 */
-            return HTTP_MT_VERSION_CONTROL;
-        }
-        break;
-
-    case 16:
-        if (strncmp(data, "BASELINE-CONTROL", index) == 0) {  /* RFC 3253 12.6 */
-            return HTTP_MT_BASELINE_CONTROL;
-        }
-        break;
-
-    default:
-        break;
     }
-
+    
     if (index > 0 && !test) {
         unkn = DMemMalloc(index+1);
         memcpy(unkn, data, index);
@@ -1397,15 +1413,16 @@ static int HttpGather(http_priv *priv, int flow_id)
         if (pkt != NULL && pkt->len != 0) {
             /* last capture time */
             last_cap_time = pkt->cap_sec;
-            /* serial number */
-            if (req->serial == 0) {
-                req->serial = pkt->serial;
-                req->start_cap = pkt->cap_sec;
-            }
             /* check if there are packet lost */
             ProtGetAttr(pkt->stk, lost_id, &lost);
             //ProtStackFrmDisp(pkt->stk, TRUE);
             if (HttpClientPkt(priv, pkt)) {
+                /* serial number */
+                if (req->serial == 0) {
+                    req->serial = pkt->serial;
+                    req->start_cap = pkt->cap_sec;
+                    LogPrintf(LV_DEBUG, "Req: %lu", req->start_cap);
+                }
                 /* client */
                 if (req->req_b == TRUE) {
                     /* next request */
@@ -1425,9 +1442,6 @@ static int HttpGather(http_priv *priv, int flow_id)
                         req->hdr_sz = 0;
                     }
                     req = req->next;
-                    /* serial number */
-                    req->serial = pkt->serial;
-                    req->start_cap = pkt->cap_sec;
                 }
                 if (req->req_h == FALSE) {
                     /* request header */
@@ -1478,6 +1492,11 @@ static int HttpGather(http_priv *priv, int flow_id)
                                 tmp = memchr(pkt->data, '\n', pkt->len);
                                 if (tmp != NULL) {
                                     req->chk_cmpl = TRUE;
+                                    if (end - tmp >= HTTP_CHUNKED_BUFF_SIZE) {
+                                        LogPrintf(LV_FATAL, "Temporary buffer too small");
+                                        ProtStackFrmDisp(priv->frame, TRUE);
+                                        exit(-1);
+                                    }
                                     memcpy(req->chk_buf, tmp, end - tmp);
                                     req->chk_size = end - tmp;
                                     req->chk_buf[req->chk_size] = '\0';
@@ -1498,6 +1517,11 @@ static int HttpGather(http_priv *priv, int flow_id)
                                     if (tmp != NULL) {
                                         tmp++;
                                         req->chk_cmpl = TRUE;
+                                        if (end - tmp >= HTTP_CHUNKED_BUFF_SIZE) {
+                                            LogPrintf(LV_FATAL, "Temporary buffer too small");
+                                            ProtStackFrmDisp(priv->frame, TRUE);
+                                            exit(-1);
+                                        }
                                         memcpy(req->chk_buf, tmp, end - tmp);
                                         req->chk_size = end - tmp;
                                         req->chk_buf[req->chk_size] = '\0';
@@ -1580,13 +1604,13 @@ static int HttpGather(http_priv *priv, int flow_id)
                         }
                     }
                 }
-                /* serial number */
-                if (req->serial == 0) {
-                    req->serial = pkt->serial;
-                    req->start_cap = pkt->cap_sec;
-                }
             }
             else {
+                /* serial number */
+                if (res->serial == 0) {
+                    res->serial = pkt->serial;
+                    res->start_cap = pkt->cap_sec;
+                }
                 /* server */
                 if (res->res_b == TRUE) {
                     if (res->next == NULL) {
@@ -1689,6 +1713,11 @@ static int HttpGather(http_priv *priv, int flow_id)
                                     if (tmp != NULL) {
                                         tmp++;
                                         res->chk_cmpl = TRUE;
+                                        if (end - tmp >= HTTP_CHUNKED_BUFF_SIZE) {
+                                            LogPrintf(LV_FATAL, "Temporary buffer too small");
+                                            ProtStackFrmDisp(priv->frame, TRUE);
+                                            exit(-1);
+                                        }
                                         memcpy(res->chk_buf, tmp, end - tmp);
                                         res->chk_size = end - tmp;
                                         res->chk_buf[res->chk_size] = '\0';
@@ -2230,7 +2259,7 @@ static bool HttpVerifyCheck(int flow_id, bool check)
     ret = FALSE;
     fr_data = FALSE;
     method = FALSE;
-    resync = TRUE;
+    resync = FALSE;
     pkt = FlowGetPktCp(flow_id);
     if (pkt != NULL) {
         ip = ProtGetNxtFrame(pkt->stk);
@@ -2384,7 +2413,9 @@ static bool HttpVerifyCheck(int flow_id, bool check)
                     }
                 } while (pkt != NULL);
             } while (ret == FALSE && pkt != NULL && len < 4096); /* 4k: max http request length */
-
+            if (method == TRUE && FlowIsClose(flow_id) == TRUE) {
+                ret = TRUE;
+            }
             /* free memory */
             if (data != NULL && fr_data == TRUE) {
                 xfree(data);

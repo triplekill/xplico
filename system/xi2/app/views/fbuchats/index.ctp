@@ -13,11 +13,11 @@ Copyright: Gianluca Costa & Andrea de Franceschi 2007-2010, http://www.xplico.or
 
 <table id="messagelist" summary="Message list" cellspacing="0">
 <tr>
-	<th><?php echo $paginator->sort(__('Users', true), 'user'); ?></th>
+	<th><?php echo $paginator->sort(__('Users', true), 'username'); ?></th>
 </tr>
 <?php foreach ($fb_users as $user): ?>
   <tr>
-        <td><b><a href="<?php echo '/fbuchats/user/' . $user['Fbuchat']['id']; ?>"><script type="text/javascript"> var txt="<?php echo $user['Fbuchat']['user']; ?>"; document.write(txt); </script></a></b></td>
+        <td><b><a href="<?php echo '/fbuchats/user/' . $user['Fbuchat']['id']; ?>"><script type="text/javascript"> var txt="<?php echo $user['Fbuchat']['username']; ?>"; document.write(txt); </script></a></b></td>
   </tr>
 <?php endforeach; ?>
 </table>

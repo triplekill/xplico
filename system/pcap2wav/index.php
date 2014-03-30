@@ -62,6 +62,7 @@ else {
                 <ul class="nav">
                     <li class="active"><a href="#">Demo</a></li>
                     <li><a href="http://www.xplico.org">Xplico</a></li>
+                    <li><a href="http://www.capanalysis.net">CapAnalysis</a></li>
                     <li><a href="mailto:xplico[at]iserm.com">Contact us</a></li>
                 </ul>
             </div>

@@ -33,6 +33,7 @@
 #include "flow.h"
 #include "log.h"
 #include "dmemory.h"
+#include "config_file.h"
 
 /** flow thread */
 typedef struct _fthrd fthrd;
@@ -48,6 +49,7 @@ struct _fth_args {
     void *arg;
     start_routine fun;
     int fid;
+    int thid;
 };
 
 /** internal variables */
@@ -95,10 +97,20 @@ static int FthreadTblExtend(void)
 }
 
 
+static void FthreadStackBase(int fthd_id, const void *base)
+{
+    pthread_mutex_lock(&fthd_mux);
+    
+    fthd_tbl[fthd_id].stack = base;
+
+    pthread_mutex_unlock(&fthd_mux);
+}
+
+
 /* it is a must that fun (inside args) is blocking the thread creation and so arg memory pointer is always consistent */
 static void *FthreadStartFun(void *arg) {
     fth_args *args;
-    int fid;
+    int fid, thid;
     start_routine fun;
     void *farg;
 
@@ -106,18 +118,21 @@ static void *FthreadStartFun(void *arg) {
     fid = args->fid;
     fun = args->fun;
     farg = args->arg;
+    thid = args->thid;
     DMemFree(arg);
-
+    
     pthread_setspecific(skey, &fid);
+    FthreadStackBase(thid, (void *)&args);
     
     return fun(farg);
 }
 
 
-int FthreadInit(void)
+int FthreadInit(const char *cfg_file)
 {
     size_t stacksize;
-
+    long rval;
+    
     fthd_tbl = NULL;
     fth_tbl_dim = 0;
     fthd_num = 0;
@@ -133,7 +148,12 @@ int FthreadInit(void)
     pthread_mutex_init(&fthd_sync_mux, NULL);
 
     /* setting the size of the stack */
-    stacksize = FTHD_STACK_SIZE;
+    if (CfgParamInt(cfg_file, FTHD_STACK_SIZE_PARAM, &rval) == 0) {
+        stacksize = rval;
+    }
+    else {
+        stacksize = FTHD_STACK_SIZE;
+    }
     if (pthread_attr_setstacksize(&fthd_attr, stacksize) != 0) {
         LogPrintf(LV_FATAL, "Unable to set thread stack size");
         exit(-1);
@@ -155,7 +175,7 @@ int FthreadCreate(int flow_id, start_routine fun, void *arg)
     pthread_mutex_lock(&fthd_mux);
 
     /* search free position */
-    for (i=0; i<fth_tbl_dim; i++) {
+    for (i=0; i!=fth_tbl_dim; i++) {
         if (fthd_tbl[i].pid == 0) {
             break;
         }
@@ -174,6 +194,7 @@ int FthreadCreate(int flow_id, start_routine fun, void *arg)
     args->fun = fun;
     args->arg = arg;
     args->fid = flow_id;
+    args->thid = i;
     pthread_mutex_lock(&fthd_sync_mux);
     ret = pthread_create(&pid, &fthd_attr, FthreadStartFun, args);
 
@@ -211,22 +232,13 @@ void FthreadSync(void)
 }
 
 
-void FthreadStackBase(int fthd_id, const void *base)
+unsigned long ThreadStackSize(void)
 {
-    pthread_mutex_lock(&fthd_mux);
+    unsigned long end;
     
-    fthd_tbl[fthd_id].stack = base;
-
-    pthread_mutex_unlock(&fthd_mux);
-}
-
-
-const void *FthreadStack(int fthd_id)
-{
-    if (fthd_id == -1)
-        return NULL;
+    //end = ((char *)&end) - ((char *)fthd_tbl[fthd_id].stack);
     
-    return fthd_tbl[fthd_id].stack;
+    return 0;
 }
 
 
@@ -269,6 +281,9 @@ void FthreadEnd(void)
 
 int FthreadChFlow(int fthd_id, int flow_id)
 {
+    if (fthd_id == -1)
+        return 0;
+    
     pthread_mutex_lock(&fthd_mux);
 
 #ifdef XPL_CHECK_CODE

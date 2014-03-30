@@ -33,7 +33,7 @@
 
 int DispatchInit(const char *file_cfg);
 int DispatchEnd(void);
-int DispatchStatus(void);
+int DispatchStatus(FILE *fp);
 unsigned long DispatchPeiPending(void);
 
 

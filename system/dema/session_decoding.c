@@ -5,7 +5,7 @@
  *
  * Xplico System
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2012 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -82,7 +82,10 @@ static manipula manip[] = {
     {.dsctr = "fbwchat", .bin = "mfbc"},
     {.dsctr = "webmail", .bin = "mwmail"},
     {.dsctr = "httpfd", .bin = "mfile"},
-    {.dsctr = "paltalk_exp", .bin = "mpaltalk"}
+    {.dsctr = "paltalk_exp", .bin = "mpaltalk"},
+    {.dsctr = "webymsg", .bin = "mwebymsg"} /*,
+    {.dsctr = "imap", .bin = "mimap"}
+*/
 };
 
 
@@ -319,7 +322,7 @@ static void *SeDePcapThread(void *data)
     FILE *fp;
     time_t tpcap;
     SSL_CTX *ctx;
-    SSL_METHOD *method;
+    const SSL_METHOD *method;
     SSL *ssl;
     
     thr_info = (pcapip_thr *)data;
@@ -337,7 +340,7 @@ static void *SeDePcapThread(void *data)
     if (ssl_cert != NULL) {
         /* create new server-method instance */
         method = SSLv23_server_method();
-        if (method  == NULL) {
+        if (method == NULL) {
             ERR_print_errors_fp(stderr);
             abort();
         }
@@ -380,7 +383,7 @@ static void *SeDePcapThread(void *data)
     while (1) {
         memcpy(&cp_set, &sd_set, sizeof(sd_set));
         rv = select(maxsd + 1, &cp_set, NULL, NULL, NULL);
-	if (rv < 0) {
+        if (rv < 0) {
             if (errno == EINTR)
                 continue;
             
@@ -394,7 +397,7 @@ static void *SeDePcapThread(void *data)
 
         if (sd4 != 0 && FD_ISSET(sd4, &cp_set)) {
             sin_size = sizeof(their_addr);
-	    sock = accept(sd4, (struct sockaddr *)&their_addr, &sin_size);
+            sock = accept(sd4, (struct sockaddr *)&their_addr, &sin_size);
             if (sock == -1)
                 continue;
             opts = fcntl(sd4, F_GETFL);
@@ -414,7 +417,7 @@ static void *SeDePcapThread(void *data)
         }
         if (sd6 != 0 && FD_ISSET(sd6, &cp_set)) {
             sin_size = sizeof(their_addr);
-	    sock = accept(sd6, (struct sockaddr *)&their_addr, &sin_size);
+            sock = accept(sd6, (struct sockaddr *)&their_addr, &sin_size);
             if (sock == -1)
                 continue;
             opts = fcntl(sd6, F_GETFL);
@@ -695,6 +698,9 @@ int SeDeStart(dbconf *db_c, char *main_dir, int pol, int session, task *pid, boo
     char *xpl_cfg;
     unsigned short port;
     struct stat app_info;
+    struct stat sbuf;
+    FILE *fxcfg;
+    struct stat cfg_stat;
 
     /* remove any other command file */
     sprintf(end_file, DM_DECOD_DIR"/%s", main_dir, pol, session, POL_END_SESSION_FILE);
@@ -729,19 +735,23 @@ int SeDeStart(dbconf *db_c, char *main_dir, int pol, int session, task *pid, boo
         }
         break;
 
-    case DB_POSTGRES:
+    case DB_POSTGRESQL:
         xpl_cfg = DM_XPLICO_POSTGRES_CFG;
         for (i=0; i!=n; i++) {
             sprintf(manip[i].cfg, "%s_install_postgres.cfg", manip[i].bin);
         }
         break;
+
+    default:
+        return -1;
     }
 
     /* start manipulators */
     port = DM_MANIP_DEF_PROT; /* basic port */
     for (i=0; i!=n; i++) {
         sprintf(app_path, "%s/bin/%s", main_dir, manip[i].bin);
-        if (stat(app_path, &app_info) == 0) {
+        sprintf(config_file, "%s/cfg/%s", main_dir, manip[i].cfg);
+        if (stat(app_path, &app_info) == 0 && (stat(config_file, &app_info) == 0)) {
             manip[i].enabled = TRUE;
             /*  port to use */
             port = SeDePort(port);
@@ -755,11 +765,11 @@ int SeDeStart(dbconf *db_c, char *main_dir, int pol, int session, task *pid, boo
                 sprintf(cmd, "cp -a %s %s", config_file, work_dir);
                 system(cmd);
                 sprintf(config_file, DM_TMP_DIR"/%s", main_dir, pol, manip[i].cfg);
-                sprintf(cmd, "echo LOG_DIR_PATH="DM_LOG_DIR" >> %s", main_dir, pol, config_file);
-                system(cmd);
-                sprintf(cmd, "echo TMP_DIR_PATH="DM_TMP_DIR"/%s >> %s", main_dir, pol, manip[i].bin, config_file);
-                system(cmd);
-                
+                fxcfg = fopen(config_file, "a");
+                fprintf(fxcfg, "LOG_DIR_PATH="DM_LOG_DIR"\n", main_dir, pol);
+                fprintf(fxcfg, "TMP_DIR_PATH="DM_TMP_DIR"/%s\n", main_dir, pol, manip[i].bin);
+                fclose(fxcfg);
+
                 /* manipulator process */
                 sprintf(work_dir, DM_DECOD_DIR, main_dir, pol, session);
                 execlp(app_path, manip[i].bin, "-c", config_file, "-s", "-p", manip[i].port, NULL);
@@ -947,14 +957,13 @@ int SeDeNextSession(char *main_dir, int pol, int session)
     DIR *dir;
     struct dirent *entry;
     char dir_path[DM_FILENAME_PATH];
-    int len_pol, len_ses;
+    int len_ses;
     int tmp;
     int sol_id;
 
     sol_id = -1;
 
     /* session directory */
-    len_pol = strlen(DM_POL_NAME);
     len_ses = strlen(DM_SESSION_NAME);
     sprintf(dir_path, DM_POL_DIR, main_dir, pol);
     dir = opendir(dir_path);

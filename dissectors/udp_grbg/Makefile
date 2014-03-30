@@ -48,7 +48,7 @@ export CC CCPP ROOT_DIR CFLAGS LDFLAGS INCLUDE_DIR
 all: subdir $(DIS_SO)
 
 
-$(DIS_SO): $(SRC:.c=.o)
+$(DIS_SO): $(SRC:.c=.o) $(ROOT_DIR)/../nDPI/src/lib/.libs/libndpi.a
 	$(CC) $(CFLAGS) -shared -Wl,-soname,$@ -o $@ $(SRC:.c=.o) $(LDFLAGS)
 
 

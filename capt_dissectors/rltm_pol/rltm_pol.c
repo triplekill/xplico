@@ -47,6 +47,7 @@
 #include "report.h"
 #include "config_param.h"
 #include "dispatch.h"
+#include "pcap_gfile.h"
 
 #define DISP_PEI_MAX_QUEUE    3000
 
@@ -108,7 +109,7 @@ static void RltmPolDissector(u_char *user, const struct pcap_pkthdr *h, const u_
     static time_t tm = 0;
     int offset;
     struct timespec to;
-    struct pcap_pkthdr pckt_header;
+    struct pcappkt_hdr pckt_header;
     size_t nwrt, wcnt;
 
     pkt = PktNew();
@@ -144,16 +145,16 @@ static void RltmPolDissector(u_char *user, const struct pcap_pkthdr *h, const u_
     if (fp_pcap != NULL) {
         pckt_header.caplen = pkt->raw_len;
         pckt_header.len = pkt->raw_len;
-        pckt_header.ts.tv_sec = pkt->cap_sec;
-        pckt_header.ts.tv_usec = pkt->cap_usec;
+        pckt_header.tv_sec = pkt->cap_sec;
+        pckt_header.tv_usec = pkt->cap_usec;
         wcnt = 0;
         do {
-            nwrt = fwrite(((char *)&pckt_header)+wcnt, 1, sizeof(struct pcap_pkthdr)-wcnt, fp_pcap);
+            nwrt = fwrite(((char *)&pckt_header)+wcnt, 1, sizeof(struct pcappkt_hdr)-wcnt, fp_pcap);
             if (nwrt != -1)
                 wcnt += nwrt;
             else
                 break;
-        } while (wcnt != sizeof(struct pcap_pkthdr));
+        } while (wcnt != sizeof(struct pcappkt_hdr));
         
         wcnt = 0;
         do {
@@ -220,7 +221,7 @@ int CaptDisMain(int argc, char *argv[])
     struct pcap_ref ref;
     FILE *fp;
     bool end, ses_id, pol_id;
-    struct pcap_pkthdr *pkt_header;
+    struct pcappkt_hdr *pkt_header;
     const u_char *pkt_data;
     static time_t tm = 0;
     struct pcap_file_header fh;

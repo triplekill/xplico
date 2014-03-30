@@ -1173,15 +1173,15 @@ static bool TftpVerifyCheck(int flow_id, bool check)
                         cnt = 0;
                         break;
                     }
-                    TftpMsgFree(msg);
                 }
                 else {
                     if (TftpMsg(pkt, msg) != 0) {
                         cnt = 0;
                         break;
                     }
-                    TftpMsgFree(msg);
                 }
+                TftpMsgFree(msg);
+                TftpMsgInit(msg);
                 cnt++;
             }
             PktFree(pkt);

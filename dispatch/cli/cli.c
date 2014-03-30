@@ -238,15 +238,27 @@ static int pei_mgcp_audio_to;
 static int pei_mgcp_audio_mix;
 static int pei_mgcp_duration;
 /* web msn chat */
-static int webmsn_id;
-static int pei_webmsn_user_id;
-static int pei_webmsn_friend_id;
-static int pei_webmsn_chat_id;
-static int pei_webmsn_duration_id;
+static int webymsg_id;
+static int pei_webymsg_user_id;
+static int pei_webymsg_friend_id;
+static int pei_webymsg_chat_id;
+static int pei_webymsg_duration_id;
 /* syslog */
 static int syslog_id;
 static int pei_syslog_host_id;
 static int pei_syslog_log_id;
+/* yahoo web chat */
+static int yahoo_id;
+static int pei_yahoo_user_id;
+static int pei_yahoo_friend_id;
+static int pei_yahoo_chat_id;
+static int pei_yahoo_duration_id;
+/* ymsg */
+static int ymsg_id;
+static int pei_ymsg_session_id;
+static int pei_ymsg_sender_id;
+static int pei_ymsg_receiver_id;
+static int pei_ymsg_msg_id;
 
 /* geomap */
 static volatile unsigned long geo_id; /* geo session number, in this case we have only one session */
@@ -254,7 +266,7 @@ static time_t tstart;
 static unsigned long npop, nsmtp, nimap, nhttp, nftp, nipp,
     npjl, nmms, ntftp, ndns, nnntp, nfbwc, ntelnet, nwebmail,
     nhttpfile, ngrptcp, ngrpudp, nrtp, nsip, narp, nirc, npltk_exp,
-    npltk, msn, nbo, mgcp, webmsn, syslog;
+    npltk, msn, nbo, mgcp, webymsg, syslog, ymsg, nyahoo;
 
 /* decode dir */
 char xdecode[CFG_LINE_MAX_SIZE];
@@ -411,9 +423,9 @@ static inline int DispDirWebMsn(char *src, char *channel)
 
     sprintf(dir, "%s/%s", xdecode, src);
     mkdir(dir, 0x01FF);
-    sprintf(dir, "%s/%s/webmsn/", xdecode, src);
+    sprintf(dir, "%s/%s/webymsg/", xdecode, src);
     mkdir(dir, 0x01FF);
-    sprintf(dir, "%s/%s/webmsn/%s", xdecode, src, channel);
+    sprintf(dir, "%s/%s/webymsg/%s", xdecode, src, channel);
     mkdir(dir, 0x01FF);
     
     return 0;
@@ -645,6 +657,40 @@ static inline int DispDirVoip(char *ips, char *from, char *to)
     sprintf(dir, "%s/%s/voip/%s", xdecode, ips, from);
     mkdir(dir, 0x01FF);
     sprintf(dir, "%s/%s/voip/%s/%s", xdecode, ips, from, to);
+    mkdir(dir, 0x01FF);
+
+    return 0;
+}
+
+
+/*static inline int DispDirYmsg(char *src, char *msg)*/
+static inline int DispDirYmsg(char *src, char *dir_name)
+{
+    char dir[XCLI_STR_DIM];
+        //printf("helloworld - cli.c - DispDirHelloworld\n");
+    LogPrintf(LV_DEBUG, "Ymsg - cli.c - dir_name:%s - DispDirYmsg", dir_name);
+
+    sprintf(dir, "%s/%s", xdecode, src);
+    mkdir(dir, 0x01FF);
+    sprintf(dir, "%s/%s/ymsg/", xdecode, src);
+    mkdir(dir, 0x01FF);
+    sprintf(dir, "%s/%s/ymsg/%s", xdecode, src, dir_name); /*msg);*/
+    mkdir(dir, 0x01FF);
+
+    return 0;
+}
+
+static inline int DispDirYahoo(char *ip, char *user)
+{
+    char dir[XCLI_STR_DIM];
+
+	LogPrintf(LV_DEBUG, "Yahoo! - cli.c - user:%s - DispDirYahoo", user);
+
+    sprintf(dir, "%s/%s", xdecode, ip);
+    mkdir(dir, 0x01FF);
+    sprintf(dir, "%s/%s/yahoo_chat", xdecode, ip);
+    mkdir(dir, 0x01FF);
+    sprintf(dir, "%s/%s/yahoo_chat/%s", xdecode, ip, user);
     mkdir(dir, 0x01FF);
 
     return 0;
@@ -2075,7 +2121,7 @@ static int DispMgcp(pei *ppei)
 }
 
 
-static int DispWebMsn(pei *ppei)
+static int DispWebYmsg(pei *ppei)
 {
     pei_component *cmpn;
     char new_path[XCLI_STR_DIM];
@@ -2086,17 +2132,17 @@ static int DispWebMsn(pei *ppei)
     channel = cfile = duration = to = from = NULL;
     cmpn = ppei->components;
     while (cmpn != NULL) {
-        if (cmpn->eid == pei_webmsn_duration_id) {
+        if (cmpn->eid == pei_webymsg_duration_id) {
             duration = cmpn->strbuf;
         }
-        else if (cmpn->eid == pei_webmsn_chat_id) {
+        else if (cmpn->eid == pei_webymsg_chat_id) {
             channel = cmpn->name;
             cfile = cmpn->file_path;
         }
-        else if (cmpn->eid == pei_webmsn_user_id) {
+        else if (cmpn->eid == pei_webymsg_user_id) {
             from = cmpn->strbuf;
         }
-        else if (cmpn->eid == pei_webmsn_friend_id) {
+        else if (cmpn->eid == pei_webymsg_friend_id) {
             to = cmpn->strbuf;
         }
         
@@ -2111,7 +2157,7 @@ static int DispWebMsn(pei *ppei)
             
             name = strrchr(cfile, '/');
             name++;
-            sprintf(new_path, "%s/%s/webmsn/%s/%s_%lu", xdecode, ip_src, from, to, time(NULL));
+            sprintf(new_path, "%s/%s/webymsg/%s/%s_%lu", xdecode, ip_src, from, to, time(NULL));
             rename(cfile, new_path);
             DispFilePaths(new_path);
         }
@@ -2158,6 +2204,120 @@ static int DispSyslog(pei *ppei)
 }
 
 
+static int DispYmsg(pei *ppei)
+{
+    pei_component *cmpn;
+    char new_path[XCLI_STR_DIM];
+    char ip_src[XCLI_STR_DIM];
+    char *name;
+    char *sender, *receiver, *msg, *mfile;
+    int session;
+
+        //printf("Ymsg - cli.c - DispYmsg\n");
+        LogPrintf(LV_DEBUG, "Ymsg - cli.c - DispYmsg1");
+
+    session = sender = receiver = msg = NULL;
+    cmpn = ppei->components;
+
+/*TODO: put a size cmpn for ymsg sender, receiver, msg??? */
+    while (cmpn != NULL) {
+        if (cmpn->eid == pei_ymsg_msg_id) {
+            msg = cmpn->strbuf;
+            mfile = cmpn->file_path;
+        }
+        else if (cmpn->eid == pei_ymsg_sender_id) {
+            sender = cmpn->strbuf;
+        }
+        else if (cmpn->eid == pei_ymsg_receiver_id) {
+            receiver = cmpn->strbuf;
+        }
+        else if (cmpn->eid == pei_ymsg_session_id) {
+            session = *(int *)(cmpn->strbuf);
+        }
+        cmpn = cmpn->next;
+    }
+
+        if (msg != NULL) {
+                LogPrintf(LV_DEBUG, "Ymsg - cli.c - msg:%s - DispYmsg2", msg);
+        /* dir name and creation */
+        if (DispIp(ppei->stack, ip_src) == NULL)
+            return -1;
+        DispDirYmsg(ip_src, "Sessions");/*msg);*/
+
+            if (mfile == NULL) {
+               printf("mfile is NULL - error\n");
+            }
+            printf("Message: %s, filepath: %s\n", msg, mfile);
+
+        name = strrchr(mfile, '/');
+        name++;
+        sprintf(new_path, "%s/%s/ymsg/%s/%s", xdecode, ip_src, "Sessions", name);
+        //LogPrintf(LV_DEBUG, "Ymsg - cli.c - old path: ", mfile);
+        //LogPrintf(LV_DEBUG, "Ymsg - cli.c - new path: ", new_path);
+        rename(mfile, new_path);
+        DispFilePaths(new_path);
+    }
+
+        LogPrintf(LV_DEBUG, "Ymsg - cli.c - DispYmsg3");
+
+    return 0;
+
+}
+
+
+static int DispYahoo(pei *ppei)
+{
+    pei_component *cmpn;
+    char new_path[XCLI_STR_DIM];
+    char ip_str[XCLI_STR_DIM];
+    char *chat, *name, *user, *friend;
+    size_t chtsize;
+
+	LogPrintf(LV_DEBUG, "Yahoo! - cli.c - DispYahoo1");
+
+    user = friend = chat = NULL;
+    cmpn = ppei->components;
+    while (cmpn != NULL) {
+        if (cmpn->eid == pei_yahoo_user_id) {
+            user = cmpn->strbuf;
+        }
+        else if (cmpn->eid == pei_yahoo_friend_id) {
+            friend = cmpn->strbuf;
+        }
+        else if (cmpn->eid == pei_yahoo_chat_id) {
+            chat = cmpn->file_path;
+            chtsize = cmpn->file_size;
+        }
+        cmpn = cmpn->next;
+    }
+
+	LogPrintf(LV_DEBUG, "Yahoo! - cli.c - user:%s - friend:%s - DispYahoo2", user, friend);
+
+    /* create new message */
+    if (chat != NULL) {
+		LogPrintf(LV_DEBUG, "Yahoo! - cli.c - DispYahoo3");
+        if (ppei->ret == FALSE) {
+            /* dir name and creation */
+            if (DispIp(ppei->stack, ip_str) == NULL)
+                return -1;
+            DispDirYahoo(ip_str, user);
+
+            /* new path */
+            name = strrchr(chat, '/');
+            name++;
+            sprintf(new_path, "%s/%s/yahoo_chat/%s/%s", xdecode, ip_str, user, name);
+            rename(chat, new_path);
+            DispFilePaths(new_path);
+        }
+    }
+
+	LogPrintf(LV_DEBUG, "Yahoo! - cli.c - DispYahoo4");
+
+    return 0;
+}
+
+
+
 int DispInit(const char *cfg_file)
 {
     char buffer[CFG_LINE_MAX_SIZE];
@@ -2174,7 +2334,7 @@ int DispInit(const char *cfg_file)
     nmms = ntftp = ndns = nnntp = nfbwc = ntelnet = 0;
     nwebmail = nhttpfile = ngrptcp = ngrpudp = nrtp = 0;
     nsip = narp = nirc = npltk_exp = npltk = msn = 0;
-    nbo = mgcp = webmsn = 0;
+    nbo = mgcp = webymsg = 0;
     syslog = 0;
 
     /* read configuration file */
@@ -2453,18 +2613,34 @@ int DispInit(const char *cfg_file)
         pei_mgcp_duration = ProtPeiComptId(mgcp_id, "duration");
     }
     
-    webmsn_id = ProtId("webmsn");
-    if (webmsn_id != -1) {
-        pei_webmsn_user_id = ProtPeiComptId(webmsn_id, "user");
-        pei_webmsn_friend_id = ProtPeiComptId(webmsn_id, "friend");
-        pei_webmsn_chat_id = ProtPeiComptId(webmsn_id, "chat");
-        pei_webmsn_duration_id = ProtPeiComptId(webmsn_id, "duration");
+    webymsg_id = ProtId("webymsg");
+    if (webymsg_id != -1) {
+        pei_webymsg_user_id = ProtPeiComptId(webymsg_id, "user");
+        pei_webymsg_friend_id = ProtPeiComptId(webymsg_id, "friend");
+        pei_webymsg_chat_id = ProtPeiComptId(webymsg_id, "chat");
+        pei_webymsg_duration_id = ProtPeiComptId(webymsg_id, "duration");
     }
     
     syslog_id = ProtId("syslog");
     if (syslog_id != -1) {
         pei_syslog_host_id = ProtPeiComptId(syslog_id, "hosts");
         pei_syslog_log_id = ProtPeiComptId(syslog_id, "log");
+    }
+
+    ymsg_id = ProtId("ymsg");
+    if (ymsg_id != -1){
+        pei_ymsg_session_id = ProtPeiComptId(ymsg_id, "session");
+        pei_ymsg_sender_id = ProtPeiComptId(ymsg_id, "sender");
+        pei_ymsg_receiver_id = ProtPeiComptId(ymsg_id, "receiver");
+        pei_ymsg_msg_id = ProtPeiComptId(ymsg_id, "msg");
+    }
+
+    yahoo_id = ProtId("yahoo");
+    if (yahoo_id != -1) {
+	    pei_yahoo_user_id = ProtPeiComptId(yahoo_id, "user");
+        pei_yahoo_friend_id = ProtPeiComptId(yahoo_id, "friend");
+        pei_yahoo_chat_id = ProtPeiComptId(yahoo_id, "chat");
+        pei_yahoo_duration_id = ProtPeiComptId(yahoo_id, "duration");
     }
     
     /* directory for repository */
@@ -2520,8 +2696,10 @@ int DispEnd()
     printf("\tpltk: %lu\n", npltk);
     printf("\tmsn: %lu\n", msn);
     printf("\tmgcp: %lu\n", mgcp);
-    printf("\twebmsn: %lu\n", webmsn);
+    printf("\twebymsg: %lu\n", webymsg);
     printf("\tsyslog: %lu\n", syslog);
+    printf("\tyahoo: %lu\n", nyahoo);
+    printf(\"tymsg: %lu\n", ymsg);
     printf("\tbo: %lu\n", nbo);
 #endif
 
@@ -2660,15 +2838,25 @@ int DispInsPei(pei *ppei)
                 mgcp++;
             ret = DispMgcp(ppei);
         }
-        else if (ppei->prot_id == webmsn_id) {
+        else if (ppei->prot_id == webymsg_id) {
             if (ppei->ret == FALSE)
-                webmsn++;
-            ret = DispWebMsn(ppei);
+                webymsg++;
+            ret = DispWebYmsg(ppei);
         }
         else if (ppei->prot_id == syslog_id) {
             if (ppei->ret == FALSE)
                 syslog++;
             ret = DispSyslog(ppei);
+        }
+        else if (ppei->prot_id == ymsg_id){
+            if (ppei->ret == FALSE)
+    	        ymsg++;
+            ret = DispYmsg(ppei);
+        }
+        else if (ppei->prot_id == yahoo_id) {
+            if (ppei->ret == FALSE)
+                nyahoo++;
+            ret = DispYahoo(ppei);
         }
         else {
             if (ppei->ret == FALSE)

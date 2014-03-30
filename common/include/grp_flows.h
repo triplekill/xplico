@@ -4,7 +4,7 @@
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -34,7 +34,7 @@
 
 
 /* define */
-#define GRPFW_GROUP_DIM           30
+#define GRPFW_GROUP_DIM           100
 #define GRPFW_TBL_ELEMENT_DELTA   100
 
 

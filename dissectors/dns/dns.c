@@ -6,7 +6,7 @@
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2012 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  * based on: ettercap -- dissector DNS -- UDP 53
  *   Copyright ALoR & NaGA. Web http://ettercap.sourceforge.net/
@@ -275,18 +275,24 @@ static packet *DnsDissector(int flow_id)
                     else {
                         if (name_len == 0) {
                             name_len = dn_expand((unsigned char *)pkt->data, end, data, name, sizeof(name));
-                            nxt += name_len;
+                            if (name_len != -1)
+                                nxt += name_len;
+                            else
+                                name_len = 0;
                         }
                         else {
                             len = dn_expand((unsigned char *)pkt->data, end, nxt, dummy, sizeof(dummy));
-                            nxt += len;
+                            if (len != -1)
+                                nxt += len;
+                            else
+                                len = 0;
                         }
                     }
                     nxt += 4;
                 }
                 if (dim != 0) {
                     ppei = DnsNewPei(flow_id, pkt);
-                    if (ppei != NULL && name_len)
+                    if (ppei != NULL && name_len > 0)
                         DnsPeiHost(ppei, name, name_len);
                 }
                 dim = htons(dns_h->num_answer);
@@ -297,16 +303,23 @@ static packet *DnsDissector(int flow_id)
                     else {
                         if (name_len == 0) {
                             name_len = dn_expand((unsigned char *)pkt->data, end, data, name, sizeof(name));
-                            nxt += name_len;
-                            if (ppei == NULL) {
-                                ppei = DnsNewPei(flow_id, pkt);
+                            if (name_len != -1) {
+                                nxt += name_len;
+                                if (ppei == NULL) {
+                                    ppei = DnsNewPei(flow_id, pkt);
+                                }
+                                if (ppei != NULL)
+                                    DnsPeiHost(ppei, name, name_len);
                             }
-                            if (ppei != NULL)
-                                DnsPeiHost(ppei, name, name_len);
+                            else
+                                name_len = 0;
                         }
                         else {
                             len = dn_expand((unsigned char *)pkt->data, end, nxt, dummy, sizeof(dummy));
-                            nxt += len;
+                            if (len != -1)
+                                nxt += len;
+                            else
+                                len = 0;
                         }
                     }
                     if (end - (nxt + 10) < 0) {
@@ -351,10 +364,14 @@ static packet *DnsDissector(int flow_id)
                         }
                         else if (type == ns_t_cname) {
                             name_len = dn_expand((unsigned char *)pkt->data, end, nxt, cname, sizeof(cname));
-                            if (ppei != NULL) {
-                                DnsPeiCname(ppei, cname);
-                                DnsPeiId(ppei, dns_h->id);
+                            if (name_len != -1) {
+                                if (ppei != NULL) {
+                                    DnsPeiCname(ppei, cname);
+                                    DnsPeiId(ppei, dns_h->id);
+                                }
                             }
+                            else
+                                name_len = 0;
                         }
                     }
                     nxt += rdlen;
@@ -401,11 +418,17 @@ static bool DnsPktTest(packet *pkt)
         else {
             if (name_len == 0) {
                 name_len = dn_expand((unsigned char *)pkt->data, end, data, name, sizeof(name));
-                nxt += name_len;
+                if (name_len != -1)
+                    nxt += name_len;
+                else
+                    name_len = 0;
             }
             else {
                 len = dn_expand((unsigned char *)pkt->data, end, nxt, dummy, sizeof(dummy));
-                nxt += len;
+                if (len != -1)
+                    nxt += len;
+                else
+                    len = 0;
             }
         }
         nxt += 4;

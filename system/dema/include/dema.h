@@ -40,6 +40,7 @@
 #define DM_SESSION_NAME          "sol_"
 #define DM_POL_DIR               "%s/pol_%i"
 #define DM_TMP_DIR               "%s/pol_%i/tmp"
+#define DM_CFG_DIR               "%s/pol_%i/cfg"
 #define DM_LOG_DIR               "%s/pol_%i/log"
 #define DM_NEW_DIR               "%s/pol_%i/sol_%i/new"
 #define DM_RAW_DIR               "%s/pol_%i/sol_%i/raw"
@@ -57,7 +58,7 @@
 #define POL_END_SESSION_FILE     "pol_send.cfg"
 #define DB_T_MYSQL               "mysql"
 #define DB_T_SQLITE              "sqlite"
-#define DB_T_POSTGRES            "postgres"
+#define DB_T_POSTGRES            "postgresql"
 /* cfg master files */
 #define DM_XPLICO_LITE_CFG       "xplico_install_lite.cfg"
 #define DM_XPLICO_MYSQL_CFG      "xplico_install_mysql.cfg"

@@ -60,6 +60,7 @@ const static char *gea_footer[] = GEA_KML_FOOTER;
 static float lat;
 static float lon;
 #endif
+static bool disabled;
 
 /* ipv4, ipv6, tcp and udp id */
 static int ip_id;
@@ -992,7 +993,7 @@ int GearthPei(unsigned long id, const pei *ppei)
     int sem_ret;
     struct stat file_stat;
 
-    if (ppei == NULL || ppei->ret == TRUE) {
+    if (ppei == NULL || ppei->ret == TRUE || disabled) {
         return 0;
     }
 
@@ -1203,9 +1204,13 @@ int GearthInit(const char *file_cfg)
     float val;
     int res;
     FILE *fp;
+#endif
 
-    lat = 45.4339;
-    lon = 12.3343;
+    disabled = FALSE;
+
+#if GEA_PRIVATE_NET
+    lat = 0;
+    lon = 0;
     /* read from cfg file latitude and longitude */
     fp = fopen(file_cfg, "r");
     if (fp == NULL) {
@@ -1232,6 +1237,8 @@ int GearthInit(const char *file_cfg)
         }
     }
     fclose(fp);
+    if (lat == 0 && lon == 0)
+        disabled = TRUE;
 #endif
 
     /* gea tmp directory */

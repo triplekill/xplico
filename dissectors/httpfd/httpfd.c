@@ -37,6 +37,8 @@
 
 #define  HTTPFD_FILE_PATH          512
 
+static bool insert_http;
+
 static int prot_id;
 static int pei_url_id;
 static int pei_file_id;
@@ -60,6 +62,7 @@ static int HttpFdRange(const char *range, unsigned long *rbase, unsigned long *r
 static packet* HttpFdDissector(packet *pkt)
 {
     http_msg *msg;
+    packet *httppkt;
     pei *ppei;
     pei_component *cmpn;
     char strbuf[HTTPFD_FILE_PATH];
@@ -86,6 +89,15 @@ static packet* HttpFdDissector(packet *pkt)
         exit(-1);
     }
 #endif
+
+    /* make the HTTP-PEI also for this message */
+    if (insert_http == TRUE) {
+        httppkt = HttpMsgPktCpy(pkt);
+        if (httppkt != NULL) {
+            HttpPktDis(httppkt);
+        }
+    }
+
     orig_file = msg->res_body_file;
     /* encoding */
     if (msg->content_encoding[1] != NULL) {
@@ -105,7 +117,7 @@ static packet* HttpFdDissector(packet *pkt)
             remove(orig_file);
         //FFormatMultipartPrint(mpfile);
         nxt = mpfile;
-        if (mpfile->content_range != NULL)
+        if (mpfile != NULL && mpfile->content_range != NULL)
             nend = TRUE;
     }
     else {
@@ -125,7 +137,7 @@ static packet* HttpFdDissector(packet *pkt)
             else
                 content_type = NULL;
         }
-        /* compose pei (to send at manipulator) */
+        /* compose pei (to send to manipulator) */
         PeiNew(&ppei, prot_id);
         PeiCapTime(ppei, pkt->cap_sec);
         PeiMarker(ppei, pkt->serial);
@@ -215,6 +227,16 @@ int DissecRegist(const char *file_cfg)
 {
     proto_dep dep;
     pei_cmpt peic;
+    bool hins;
+    
+    insert_http = FALSE;
+    if (file_cfg != NULL) {
+        if (CfgParamBool(file_cfg, "HTTPFD_HTTP_INSERT", &hins) == 0) {
+            if (hins) {
+                insert_http = TRUE;
+            }
+        }
+    }
 
     memset(&dep, 0, sizeof(proto_dep));
     memset(&peic, 0, sizeof(pei_cmpt));
@@ -265,6 +287,9 @@ int DissectInit(void)
     http_id = ProtId("http");
     if (http_id != -1) {
         HttpPktDis = ProtPktDefaultDis(http_id);
+    }
+    else {
+        insert_http = FALSE;
     }
 
     /* pei id */

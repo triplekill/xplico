@@ -178,9 +178,19 @@
                               'className' => 'Msn_chat',
                               'dependent' => true
                               ),
+                          'Webymsg' =>
+                          array(
+                              'className' => 'Webymsg',
+                              'dependent' => true
+                              ),
                           'Syslog' =>
                           array(
                               'className' => 'Syslog',
+                              'dependent' => true
+                              ),
+                          'Unkfile' =>
+                          array(
+                              'className' => 'Unkfile',
                               'dependent' => true
                               )
 

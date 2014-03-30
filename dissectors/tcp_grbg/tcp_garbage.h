@@ -39,6 +39,7 @@
 /* packets limit for dependency and cfg */
 #define TCP_GRB_PKT_LIMIT               50
 #define TCP_GRB_PKT_LIMIT_CFG           "TCP_GRB_PKT_LIMIT"
+#define TCP_GRB_CFG_FILE                "TCP_GRB_CFG_FILE"
 
 
 typedef struct _tgrb_priv tgrb_priv;

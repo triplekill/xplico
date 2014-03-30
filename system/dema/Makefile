@@ -39,8 +39,13 @@ SRC = dema.c session_decoding.c dbinterface.c captime.c
 
 # compilation
 INCLUDE_DIR = -I$(ROOT_DIR)/include
-LDFLAGS = -L$(ROOT_DIR) -ldl -lpthread -lpcap -L/usr/lib/mysql -L/usr/lib64/mysql -lmysqlclient_r
+LDFLAGS = -L$(ROOT_DIR) -ldl -lpthread -lpcap
 CFLAGS = -rdynamic $(INCLUDE_DIR) -Wall -g -ggdb -fPIC -D_FILE_OFFSET_BITS=64
+
+ifdef MYSQL
+LDFLAGS += -L/usr/lib/mysql -L/usr/lib64/mysql -lmysqlclient_r
+CFLAGS *= -DMYSQLXON=1
+endif
 
 # performance
 ifdef GPROF

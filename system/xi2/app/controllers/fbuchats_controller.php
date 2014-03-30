@@ -43,7 +43,7 @@ class FbuchatsController extends AppController {
         var $uses = array('Fbuchat', 'Fbchat');
         var $helpers = array('Html', 'Form', 'Javascript');
         var $components = array('Xml2Pcap', 'Xplico');
-        var $paginate = array('limit' => 16, 'order' => array('Fbuchat.user' => 'asc'));
+        var $paginate = array('limit' => 16, 'order' => array('Fbuchat.username' => 'asc'));
 
         function beforeFilter() {
                 $groupid = $this->Session->read('group');
@@ -72,7 +72,7 @@ class FbuchatsController extends AppController {
                 $srch = $this->data['Search']['label'];
             }
             if (!empty($srch)) {
-                $filter['Fbuchat.user LIKE'] = "%$srch%";
+                $filter['Fbuchat.username LIKE'] = "%$srch%";
             }
             $msgs = $this->paginate('Fbuchat', $filter);
             $this->Session->write('srch_fbuchat', $srch);
@@ -134,7 +134,7 @@ class FbuchatsController extends AppController {
                 $this->layout = 'fbchat';
                 $this->autoRender = TRUE;
                 /* in the template there is a JavaScript */
-                $this->set('user', $chat['Fbchat']['user']);
+                $this->set('user', $chat['Fbchat']['username']);
                 $this->set('friend', $chat['Fbchat']['friend']);
                 $this->set('ct', $chat['Fbchat']['capture_date']);
                 $talk = '';

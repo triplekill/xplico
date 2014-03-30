@@ -28,12 +28,20 @@
 #define __DIS_MOD_H__
 
 #define DISMOD_REGIST_FUN        "DissecRegist"
+#define DISMOD_MULTI_REGIST_FUN  "DissecMultiRegist"
 #define DISMOD_INIT_FUN          "DissectInit"
 #define DISMOD_LOG_FUN           "DissectLog"
+#define DISMOD_FLOW_HASH         "DissectFlowHash"
+#define DISMOD_FLOW_CMP          "DissectFlowCmp"
+#define DISMOD_FLOW_CMPFREE      "DissectFlowCmpFree"
+
 
 
 /** Dissector register */
 typedef int (*DisRegist)(const char *file_cfg);
+
+/** Dissector multiple register */
+typedef int (*DisMultiRegist)(const char *file_cfg);
 
 /** Dissector inizialization */
 typedef int (*DisInit)(void);

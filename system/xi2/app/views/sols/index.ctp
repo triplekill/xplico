@@ -18,8 +18,8 @@ Copyright: Gianluca Costa & Andrea de Franceschi 2007-2010, http://www.xplico.or
 <?php foreach ($sols as $sol): ?>
 <tr>
 	<td><?php echo $html->link($sol['Sol']['name'],'/sols/view/' . $sol['Sol']['id']); ?></td>
-	<td><?php echo $sol['Sol']['start_time']; ?></td>
-	<td><?php echo $sol['Sol']['end_time']; ?></td>
+	<td><?php if ($sol['Sol']['start_time'] != '1990-01-01 00:00:00') echo $sol['Sol']['start_time']; else echo '---'; ?></td>
+	<td><?php if ($sol['Sol']['start_time'] != '1990-01-01 00:00:00') echo $sol['Sol']['end_time']; else echo '---'; ?></td>
 	<td><?php echo $sol['Sol']['status']; ?></td>
 	<td class="actions">
 		<?php

@@ -35,25 +35,45 @@
 static GeoIP *gi;
 static GeoIP *giv6;
 static pthread_mutex_t atom; /* atomic action */
+static pthread_mutex_t atom6; /* atomic action */
+static bool city = FALSE;
+static bool cityv6 = FALSE;
+
 
 int GeoIPLocInit(void)
 {
+    pthread_mutex_init(&atom, NULL);
+    pthread_mutex_init(&atom6, NULL);
+    
     /* try to open an db */
     giv6 = NULL;
     gi = GeoIP_open("/usr/share/GeoIP/GeoLiteCity.dat", GEOIP_MEMORY_CACHE);
     
     if (gi == NULL) {
-        LogPrintf(LV_ERROR, "GeoIP without GeoLiteCity database, see INSTALL");
-        return -1;
+        /* cpuntry db */
+        gi = GeoIP_open("GeoIP.dat", GEOIP_MEMORY_CACHE);
+        if (gi == NULL) {
+            LogPrintf(LV_ERROR, "GeoIP without GeoLiteCity/GeoIP database, see INSTALL");
+            return -1;
+        }
+    }
+    else {
+        city = TRUE;
     }
     
     giv6 = GeoIP_open("/usr/share/GeoIP/GeoLiteCityv6.dat", GEOIP_MEMORY_CACHE);
 
     if (giv6 == NULL) {
-        LogPrintf(LV_ERROR, "GeoIP without GeoLiteCity database, see INSTALL");
+        /* cpuntry db */
+        giv6 = GeoIP_open("GeoIPv6.dat", GEOIP_MEMORY_CACHE);
+        if (giv6 == NULL) {
+            LogPrintf(LV_ERROR, "GeoIP without GeoLiteCity/GeoIP V6 database, see INSTALL");
+        }
         return -1;
     }
-    pthread_mutex_init(&atom, NULL);
+    else {
+        cityv6 = TRUE;
+    }
 
     return 0;
 }
@@ -63,14 +83,23 @@ int GeoIPLocIP(ftval *ip, enum ftype itype, float *latitude, float *longitude, c
 {
     GeoIPRecord *gir;
     geoipv6_t gv6;
+    const char *ccode;
 
     gir = NULL;
+    ccode = NULL;
     switch (itype) {
     case FT_IPv4:
         if (gi == NULL)
             return -1;
         pthread_mutex_lock(&atom);
-        gir = GeoIP_record_by_ipnum(gi, ntohl(ip->uint32));
+        if (city) {
+            gir = GeoIP_record_by_ipnum(gi, ntohl(ip->uint32));
+            if (gir != NULL)
+                ccode = gir->country_code;
+        }
+        else {
+            ccode = GeoIP_country_code_by_ipnum(gi, ntohl(ip->uint32));
+        }
         pthread_mutex_unlock(&atom);
         break;
         
@@ -78,9 +107,16 @@ int GeoIPLocIP(ftval *ip, enum ftype itype, float *latitude, float *longitude, c
         if (giv6 == NULL)
             return -1;
         memcpy(gv6.s6_addr, ip->ipv6, 16);
-        pthread_mutex_lock(&atom);
-        gir = GeoIP_record_by_ipnum_v6(giv6, gv6);
-        pthread_mutex_unlock(&atom);
+        pthread_mutex_lock(&atom6);
+        if (cityv6) {
+            gir = GeoIP_record_by_ipnum_v6(giv6, gv6);
+            if (gir != NULL)
+                ccode = gir->country_code;
+        }
+        else {
+            ccode = GeoIP_country_code_by_ipnum_v6(giv6, gv6);
+        }
+        pthread_mutex_unlock(&atom6);
         break;
 
     default:
@@ -91,8 +127,12 @@ int GeoIPLocIP(ftval *ip, enum ftype itype, float *latitude, float *longitude, c
         *latitude = gir->latitude;
         *longitude = gir->longitude;
         if (country_code != NULL)
-            *country_code = gir->country_code;
+            *country_code = (char *)ccode;
         GeoIPRecord_delete(gir);
+        return 0;
+    }
+    if (country_code != NULL && ccode != NULL) {
+        *country_code = (char *)ccode;
         return 0;
     }
 
@@ -107,12 +147,14 @@ int GeoIPLocAddr(char *addr, float *latitude, float *longitude)
     if (gi == NULL)
        return -1;
 
-    gir = GeoIP_record_by_addr(gi, (const char *)addr);
-    if (gir != NULL) {
-        *latitude = gir->latitude;
-        *longitude = gir->longitude;
-        GeoIPRecord_delete(gir);
-        return 0;
+    if (city) {
+        gir = GeoIP_record_by_addr(gi, (const char *)addr);
+        if (gir != NULL) {
+            *latitude = gir->latitude;
+            *longitude = gir->longitude;
+            GeoIPRecord_delete(gir);
+            return 0;
+        }
     }
     
     return -1;

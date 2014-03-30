@@ -492,7 +492,7 @@ int main(int argc, char *argv[])
     }
     
     /* Thread function initialization */
-    FthreadInit();
+    FthreadInit(config_file);
 
     /* connection start-wait */
     if (info == FALSE) {

@@ -5,7 +5,7 @@
  *
  * Xplico System
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2011 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -35,6 +35,8 @@
 #include "dmemory.h"
 #include "pei.h"
 #include "fileformat.h"
+#include "libero.h"
+#include "rossoalice.h"
 
 /* http id */
 static int http_id;
@@ -64,6 +66,16 @@ static int pei_txt_id;
 
 /* webmail variables */
 static volatile unsigned short inc;
+static email_libero *libero;
+static ralice *alice;
+static unsigned int yahoo_m;
+static unsigned int aol_m;
+static unsigned int gmail_m;
+static unsigned int hotmail_m;
+static unsigned int yandroid_m;
+static unsigned int libero_m;
+static unsigned int alice_m;
+
 
 
 static pei *WMail2Pei(const char *filename, const pei *mpei, char *dir)
@@ -233,6 +245,7 @@ static pei *WMYahoo(const pei *ppei)
     while (cmpn != NULL) {
         if (cmpn->eid == pei_url_id) {
             url = cmpn->strbuf;
+            url = url;
         }
         else if (cmpn->eid == pei_dir_id) {
             dir = cmpn->strbuf;
@@ -308,7 +321,7 @@ static pei *WMYahoo(const pei *ppei)
                     /* service type */
                     PeiNewComponent(&cmpn, pei_serv_id);
                     PeiCompCapTime(cmpn, ppei->time_cap);
-                    PeiCompAddStingBuff(cmpn, "yahoo");
+                    PeiCompAddStingBuff(cmpn, "Yahoo");
                     PeiAddComponent(new_pei, cmpn);
                     PeiIns(new_pei);
                 }
@@ -356,6 +369,7 @@ static pei *WMYahooV2(const pei *ppei)
     while (cmpn != NULL) {
         if (cmpn->eid == pei_url_id) {
             url = cmpn->strbuf;
+            url = url;
         }
         else if (cmpn->eid == pei_dir_id) {
             if (strcmp(cmpn->strbuf, "r") == 0)
@@ -445,9 +459,10 @@ static pei *WMYahooV2(const pei *ppei)
                     /* service type */
                     PeiNewComponent(&cmpn, pei_serv_id);
                     PeiCompCapTime(cmpn, ppei->time_cap);
-                    PeiCompAddStingBuff(cmpn, "yahoo_v2");
+                    PeiCompAddStingBuff(cmpn, "Yahoo");
                     PeiAddComponent(new_pei, cmpn);
                     PeiIns(new_pei);
+                    yahoo_m++;
                 }
                 else {
                     LogPrintfPei(LV_ERROR, ppei, "Yahoo v2 python Decoding failed");
@@ -494,6 +509,7 @@ static pei *WMYahooAndroid(const pei *ppei)
     while (cmpn != NULL) {
         if (cmpn->eid == pei_url_id) {
             url = cmpn->strbuf;
+            url = url;
         }
         else if (cmpn->eid == pei_req_header_id) {
             rqh = cmpn->file_path;
@@ -568,10 +584,11 @@ static pei *WMYahooAndroid(const pei *ppei)
                     /* service type */
                     PeiNewComponent(&cmpn, pei_serv_id);
                     PeiCompCapTime(cmpn, ppei->time_cap);
-                    PeiCompAddStingBuff(cmpn, "yahoo android");
+                    PeiCompAddStingBuff(cmpn, "Yahoo Android");
                     PeiAddComponent(new_pei, cmpn);
                     //PeiPrint(new_pei);
                     PeiIns(new_pei);
+                    yandroid_m++;
                 }
                 else {
                     LogPrintfPei(LV_ERROR, ppei, "Yahoo Android python Decoding failed");
@@ -624,6 +641,7 @@ static pei *WMAol(const pei *ppei)
         }
         else if (cmpn->eid == pei_url_id) {
             url = cmpn->strbuf;
+            url = url;
         }
         else if (cmpn->eid == pei_req_header_id) {
             rqh = cmpn->file_path;
@@ -696,7 +714,7 @@ static pei *WMAol(const pei *ppei)
                     /* service type */
                     PeiNewComponent(&cmpn, pei_serv_id);
                     PeiCompCapTime(cmpn, ppei->time_cap);
-                    PeiCompAddStingBuff(cmpn, "aol");
+                    PeiCompAddStingBuff(cmpn, "AOL");
                     PeiAddComponent(new_pei, cmpn);
                     PeiIns(new_pei);
                 }
@@ -751,6 +769,7 @@ static pei *WMAolV2(const pei *ppei)
         }
         else if (cmpn->eid == pei_url_id) {
             url = cmpn->strbuf;
+            url = url;
         }
         else if (cmpn->eid == pei_req_header_id) {
             rqh = cmpn->file_path;
@@ -833,9 +852,10 @@ static pei *WMAolV2(const pei *ppei)
                     /* service type */
                     PeiNewComponent(&cmpn, pei_serv_id);
                     PeiCompCapTime(cmpn, ppei->time_cap);
-                    PeiCompAddStingBuff(cmpn, "aol");
+                    PeiCompAddStingBuff(cmpn, "AOL");
                     PeiAddComponent(new_pei, cmpn);
                     PeiIns(new_pei);
+                    aol_m++;
                 }
                 else {
                     LogPrintfPei(LV_ERROR, ppei, "AOL v2 python Decoding failed");
@@ -887,6 +907,7 @@ static pei *WMGmail(const pei *ppei)
         }
         else if (cmpn->eid == pei_url_id) {
             url = cmpn->strbuf;
+            url = url;
         }
         else if (cmpn->eid == pei_req_header_id) {
             rqh = cmpn->file_path;
@@ -969,9 +990,10 @@ static pei *WMGmail(const pei *ppei)
                     /* service type */
                     PeiNewComponent(&cmpn, pei_serv_id);
                     PeiCompCapTime(cmpn, ppei->time_cap);
-                    PeiCompAddStingBuff(cmpn, "gmail");
+                    PeiCompAddStingBuff(cmpn, "GMail");
                     PeiAddComponent(new_pei, cmpn);
                     PeiIns(new_pei);
+                    gmail_m++;
                 }
                 else {
                     LogPrintfPei(LV_ERROR, ppei, "Gmail python Decoding failed");
@@ -1024,6 +1046,7 @@ static pei *WMHotmail(const pei *ppei)
         }
         else if (cmpn->eid == pei_url_id) {
             url = cmpn->strbuf;
+            url = url;
         }
         else if (cmpn->eid == pei_req_header_id) {
             rqh = cmpn->file_path;
@@ -1096,7 +1119,7 @@ static pei *WMHotmail(const pei *ppei)
                     /* service type */
                     PeiNewComponent(&cmpn, pei_serv_id);
                     PeiCompCapTime(cmpn, ppei->time_cap);
-                    PeiCompAddStingBuff(cmpn, "live");
+                    PeiCompAddStingBuff(cmpn, "Live");
                     PeiAddComponent(new_pei, cmpn);
                     PeiIns(new_pei);
                 }
@@ -1119,9 +1142,617 @@ static pei *WMHotmail(const pei *ppei)
 }
 
 
+static int WMRossoAliceDU(const char *url, char *user, char *domain)
+{
+    const char *tmp, *tmp1;
+
+    tmp = strstr(url, "?d=");
+    if (tmp == NULL) {
+        tmp = strstr(url, "&d=");
+    }
+    if (tmp != NULL) {
+        tmp += 3;
+        tmp1 = strstr(tmp, "&");
+        if (tmp1 != NULL) {
+            strncpy(domain, tmp, tmp1-tmp);
+            domain[tmp1-tmp] = '\0';
+        }
+    }
+
+    tmp = strstr(url, "u=");
+    if (tmp != NULL) {
+        if (tmp != url && (tmp-1)[0] != '&')
+            return -1;
+        tmp += 2;
+        tmp1 = strstr(tmp, "&");
+        if (tmp1 != NULL) {
+            strncpy(user, tmp, tmp1-tmp);
+            user[tmp1-tmp] = '\0';
+        }
+    }
+    
+    return 0;
+}
+
+static int WMRossoAliceUID(const char *line, char *uid)
+{
+    const char *tmp, *tmp1;
+
+    tmp = strstr(line, "&uid=");
+    if (tmp != NULL) {
+        tmp += 5;
+        tmp1 = strstr(tmp, "&");
+        if (tmp1 != NULL) {
+            strncpy(uid, tmp, tmp1-tmp);
+            uid[tmp1-tmp] = '\0';
+        }
+    }
+    
+    return 0;
+}
+
+    
+static pei *WMRossoAlice(pei *ppei)
+{
+    char *url, *rqh, *rsh, *rqb, *rsb, *dir;
+    pei_component *cmpn;
+    const pstack_f *frame;
+    ftval enc;
+    char usr[RALICE_STR_SIZE];
+    char domain[RALICE_STR_SIZE];
+    char email[RALICE_STR_SIZE];
+    char uid[RALICE_STR_SIZE];
+    char line[RALICE_STR_SIZE];
+    char new_path[WMAIL_STR_DIM];
+    char resp[WMAIL_STR_DIM];
+    char cmd[WMAIL_STR_DIM*2];
+    bool header;
+    int ret, i;
+    ralice *aemail, *pre;
+    pei *new_pei;
+    struct stat finfo;
+    FILE *fp;
+    
+    //PeiPrint(ppei);
+    
+    /* encoding */
+    frame = ProtStackSearchProt(ppei->stack, http_id);
+    if (frame) {
+        ProtGetAttr(frame, http_encoding_id, &enc);
+    }
+    url = rqh = rsh = rqb = rsb = NULL;
+    usr[0] = domain[0] = uid[0] = resp[0] = '\0';
+    header = FALSE;
+    cmpn = ppei->components;
+    while (cmpn != NULL) {
+        if (cmpn->eid == pei_url_id) {
+            url = cmpn->strbuf;
+            WMRossoAliceDU(url, usr, domain);
+            if (strstr(url, "SLEmailHeaders?") != NULL) {
+                header = TRUE;
+            }
+        }
+        else if (cmpn->eid == pei_dir_id) {
+            dir = cmpn->strbuf;
+        }
+        else if (cmpn->eid == pei_req_header_id) {
+            rqh = cmpn->file_path;
+            remove(rqh);
+        }
+        else if (cmpn->eid == pei_req_body_id) {
+            rqb = cmpn->file_path;
+            if (uid[0] == '\0') {
+                fp = fopen(rqb, "r");
+                if (fp != NULL) {
+                    if (fread(line, 1, RALICE_STR_SIZE, fp) > 0) {
+                        WMRossoAliceUID(line, uid);
+                        if (usr[0] == '\0') {
+                            WMRossoAliceDU(line, usr, domain);
+                        }
+                    }
+                    fclose(fp);
+                }
+            }
+            //LogPrintf(LV_DEBUG, "-> %s", rqb);
+        }
+        else if (cmpn->eid == pei_res_header_id) {
+            rsh = cmpn->file_path;
+            remove(rsh);
+        }
+        else if (cmpn->eid == pei_res_body_id) {
+            rsb = cmpn->file_path;
+        }
+        
+        cmpn = cmpn->next;
+    }
+    if (dir[0] == 's') { /* sent */
+        if (usr[0] != '\0' &&  domain[0] != '\0' && rqb != NULL) {
+            sprintf(email, "%s@%s", usr, domain);
+            /* received */
+            sprintf(resp, "%s/rossoalice_%lu_%p_%i", ProtTmpDir(), time(NULL), rqb, inc++);
+            sprintf(cmd, "./wbm_rossoalice.pyc -s %s %s %s", email, rqb, resp);
+            /* extract all information:
+                from, to, cc, bcc, subject, email */
+            ret = system(cmd);
+            remove(rqb);
+            remove(rsb);
+            if (ret == -1) {
+                LogPrintfPei(LV_WARNING, aemail->ppei, "Alice TelecomItalia python (wbm_rossoalice.pyc) system error");
+                LogPrintf(LV_DEBUG, "Files: %s", rqb);
+            }
+            else if (WEXITSTATUS(ret) != 0) {
+                LogPrintfPei(LV_WARNING, aemail->ppei, "Alice TelecomItalia python (wbm_rossoalice.pyc) error");
+                LogPrintf(LV_DEBUG, "Files: %s", rqb);
+            }
+            alice_m++;
+        }
+    }
+    else if (usr[0] != '\0' &&  domain[0] != '\0' &&  uid[0] != '\0') { /* received */
+        remove(rqb);
+        sprintf(email, "%s@%s", usr, domain);
+        LogPrintf(LV_STATUS, "%s %s", email, uid);
+        pre = NULL;
+        aemail = alice;
+        while (aemail != NULL) {
+            if (strcmp(aemail->ref, email) == 0) {
+                if (strcmp(aemail->uid, uid) == 0) {
+                    break;
+                }
+            }
+            pre = aemail;
+            aemail = aemail->nxt;
+        }
+        if (aemail == NULL) {
+            /* new email */
+            aemail = xcalloc(1, sizeof(ralice));
+            if (aemail == NULL) {
+                LogPrintf(LV_ERROR, "Out of memory");
+                return NULL;
+            }
+            strncpy(aemail->ref, email, RALICE_STR_SIZE);
+            strncpy(aemail->uid, uid, RALICE_STR_SIZE);
+            aemail->ppei = ppei;
+            ppei = NULL;
+            pre = NULL;
+            aemail->nxt = alice;
+            alice = aemail;
+        }
+        if (header) {
+            if (enc.str[0] != '\0') {
+                /* compressed */
+                sprintf(new_path, "%s.dec", rsb);
+                FFormatUncompress(enc.str, rsb, new_path);
+                remove(rsb);
+                strncpy(aemail->header, new_path, RALICE_STR_SIZE);
+            }
+            else
+                strncpy(aemail->header, rsb, RALICE_STR_SIZE);
+        }
+        else {
+            if (enc.str[0] != '\0') {
+                /* compressed */
+                sprintf(new_path, "%s.dec", rsb);
+                FFormatUncompress(enc.str, rsb, new_path);
+                remove(rsb);
+                strncpy(aemail->body, new_path, RALICE_STR_SIZE);
+            }
+            else
+                strncpy(aemail->body, rsb, RALICE_STR_SIZE);
+        }
+        if (aemail->body[0] != '\0' && aemail->header != '\0') {
+            /* add stack */
+            PeiAddStkGrp(aemail->ppei, ppei->stack);
+            PeiFree(ppei);
+            ppei = NULL;
+            /* received */
+            sprintf(resp, "%s/rossoalice_%lu_%p_%i", ProtTmpDir(), time(NULL), rsb, inc++);
+            sprintf(cmd, "./wbm_rossoalice.pyc %s %s %s %s", aemail->ref, aemail->header, aemail->body, resp);
+        
+            /* extract all information:
+                from, to, cc, bcc, subject, email */
+            ret = system(cmd);
+            if (ret == -1) {
+                LogPrintfPei(LV_WARNING, aemail->ppei, "Alice TelecomItalia python (wbm_rossoalice.pyc) system error");
+                LogPrintf(LV_DEBUG, "Files: %s %s", aemail->header, aemail->body);
+            }
+            else if (WEXITSTATUS(ret) != 0) {
+                LogPrintfPei(LV_WARNING, aemail->ppei, "Alice TelecomItalia python (wbm_rossoalice.pyc) error");
+                LogPrintf(LV_DEBUG, "Files: %s %s", aemail->header, aemail->body);
+            }
+            /* remove from list */
+            if (pre != NULL && pre->nxt != aemail)
+                LogPrintfPei(LV_ERROR, aemail->ppei, "Email Alice TelecomItalia list bug");
+            else {
+                if (pre == NULL)
+                    alice = aemail->nxt;
+                else
+                    pre->nxt = aemail->nxt;
+                remove(aemail->header);
+                remove(aemail->body);
+                ppei = aemail->ppei;
+                aemail->ppei = NULL;
+                xfree(aemail);
+                aemail = NULL;
+            }
+            alice_m++;
+        }
+    }
+
+    if (resp[0] != '\0') {
+        /* mail decoded */
+        i = 0;
+        do {
+            sprintf(new_path, "%s_%d", resp, i);
+            if (stat(new_path, &finfo) == 0) {
+                new_pei = WMail2Pei(new_path, ppei, dir);
+                if (new_pei != NULL) {
+                    /* service type */
+                    PeiNewComponent(&cmpn, pei_serv_id);
+                    PeiCompCapTime(cmpn, ppei->time_cap);
+                    PeiCompAddStingBuff(cmpn, "Alice");
+                    PeiAddComponent(new_pei, cmpn);
+                    //PeiPrint(new_pei);
+                    PeiIns(new_pei);
+                }
+                else {
+                    LogPrintfPei(LV_ERROR, ppei, "Alice Telecom Italai python Decoding failed");
+                }
+                i++;
+            }
+            else {
+                /* end */
+                i = 0;
+            }
+        } while (i);
+    }
+    
+    if (ppei != NULL)
+        PeiFree(ppei);
+
+    FTFree(&enc, FT_STRING);
+    
+    return NULL;
+}
+
+
+static pei *WMLiberoOld(const pei *ppei)
+{
+    return NULL;
+}
+
+
+static pei *WMLibero(pei *ppei)
+{
+    char *url, *rqh, *rsh, *rqb, *rsb, *dir;
+    pei_component *cmpn;
+    const pstack_f *frame;
+    ftval val;
+    char new_path[WMAIL_STR_DIM];
+    char resp[WMAIL_STR_DIM];
+    char cmd[WMAIL_STR_DIM*2];
+    int ret, i;
+    char *pid, *pide;
+    email_libero *lemail, *pre;
+    pei *new_pei;
+    struct stat finfo;
+    bool lbody;
+    
+    resp[0] = '\0';
+
+    /* encoding */
+    frame = ProtStackSearchProt(ppei->stack, http_id);
+    if (frame) {
+        ProtGetAttr(frame, http_encoding_id, &val);
+    }
+    url = rqh = rsh = rqb = rsb = NULL;
+    cmpn = ppei->components;
+    while (cmpn != NULL) {
+        if (cmpn->eid == pei_url_id) {
+            url = cmpn->strbuf;
+            url = url;
+        }
+        else if (cmpn->eid == pei_dir_id) {
+            dir = cmpn->strbuf;
+        }
+        else if (cmpn->eid == pei_req_header_id) {
+            rqh = cmpn->file_path;
+            remove(rqh);
+        }
+        else if (cmpn->eid == pei_req_body_id) {
+            rqb = cmpn->file_path;
+        }
+        else if (cmpn->eid == pei_res_header_id) {
+            rsh = cmpn->file_path;
+            remove(rsh);
+        }
+        else if (cmpn->eid == pei_res_body_id) {
+            rsb = cmpn->file_path;
+        }
+        
+        cmpn = cmpn->next;
+    }
+
+    /* check and complete the email data */
+    if (url == NULL) {
+        LogPrintfPei(LV_WARNING, ppei, "Libero WebMail without url!");
+        return NULL;
+    }
+    
+    if (strstr(url, "MailMessageBody") != NULL) /* header or body */
+        lbody = TRUE;
+    else
+        lbody = FALSE;
+    
+    pid = strstr(url, "&pid=");
+    if (pid == NULL) {
+        printf("%s\n", url);
+        PeiPrint(ppei);
+        exit(-1);
+        LogPrintfPei(LV_WARNING, ppei, "Unable to decode Libero WebMail. Possible new version!");
+        return NULL;
+    }
+    pid += 5;
+    pide = strstr(pid, "&");
+    if (pide != NULL)
+        pide[0] = '\0';
+    
+    pre = NULL;
+    lemail = libero;
+    while (lemail != NULL) {
+        if (strcmp(lemail->pid, pid) == 0)
+            break;
+        pre = lemail;
+        lemail = lemail->next;
+    }
+    if (lemail == NULL) {
+        /* new email */
+        lemail = xcalloc(1, sizeof(email_libero));
+        if (lemail == NULL) {
+            LogPrintf(LV_ERROR, "Out of memory");
+            return NULL;
+        }
+        strncpy(lemail->pid, pid, LIBERO_STR_SIZE);
+        lemail->ppei = ppei;
+        ppei = NULL;
+        pre = NULL;
+        lemail->next = libero;
+        libero = lemail;
+    }
+    if (lbody) {
+        if (val.str[0] != '\0') {
+            /* compressed */
+            sprintf(new_path, "%s.dec", rsb);
+            FFormatUncompress(val.str, rsb, new_path);
+            remove(rsb);
+            strncpy(lemail->body, new_path, LIBERO_STR_SIZE);
+        }
+        else
+            strncpy(lemail->body, rsb, LIBERO_STR_SIZE);
+    }
+    else {
+        if (val.str[0] != '\0') {
+            /* compressed */
+            sprintf(new_path, "%s.dec", rsb);
+            FFormatUncompress(val.str, rsb, new_path);
+            remove(rsb);
+            strncpy(lemail->header, new_path, LIBERO_STR_SIZE);
+        }
+        else
+            strncpy(lemail->header, rsb, LIBERO_STR_SIZE);
+    }
+    
+    /* sent or received */
+    if (rqb == NULL && lemail != NULL && lemail->body[0] != '\0' && lemail->header[0] != '\0') {
+        /* add stack */
+        PeiAddStkGrp(lemail->ppei, ppei->stack);
+        PeiFree(ppei);
+        ppei = NULL;
+        /* received */
+        sprintf(resp, "%s/libero_%lu_%p_%i", ProtTmpDir(), time(NULL), rsb, inc++);
+        sprintf(cmd, "./wbm_libero.pyc %s %s %s", lemail->header, lemail->body, resp);
+        
+        /* extract all information:
+           from, to, cc, bcc, subject, email */
+        ret = system(cmd);
+        if (ret == -1) {
+            LogPrintfPei(LV_WARNING, lemail->ppei, "Libero python (wbm_libero.pyc) system error: %s", rsb);
+        }
+        else if (WEXITSTATUS(ret) != 0) {
+            LogPrintfPei(LV_WARNING, lemail->ppei, "Libero python (wbm_libero.pyc) error: %s", rsb);
+        }
+        /* remove from list */
+        if (pre != NULL && pre->next != lemail)
+            LogPrintfPei(LV_ERROR, lemail->ppei, "Email Libero list bug");
+        else {
+            if (pre == NULL)
+                libero = lemail->next;
+            else
+                pre->next = lemail->next;
+            remove(lemail->header);
+            remove(lemail->body);
+            ppei = lemail->ppei;
+            lemail->ppei = NULL;
+            xfree(lemail);
+            lemail = NULL;
+        }
+    }
+    else if (rqb != NULL) {
+#if 0
+        /* sent */
+        /* extract all information:
+           from, to, cc, bcc, subject, email */
+        sprintf(resp, "%s/%s/libero_%lu_%p_%i", ProtTmpDir(), WEBMAIL_TMP_DIR, time(NULL), rqb, inc++);
+        sprintf(cmd, "./wbm_libero.pyc -s %s %s", rqb, resp);
+        
+        /* extract all information:
+           from, to, cc, bcc, subject, email */
+        ret = system(cmd);
+        if (ret == -1) {
+            LogPrintfPei(LV_WARNING, ppei, "Libero python (wbm_libero.pyc) system error: %s", rqb);
+        }
+        else if (WEXITSTATUS(ret) != 0) {
+            LogPrintfPei(LV_WARNING, ppei, "Libero python (wbm_libero.pyc) error: %s", rqb);
+        }
+#endif
+    }
+
+    if (resp[0] != '\0') {
+        /* mail decoded */
+        i = 0;
+        do {
+            sprintf(new_path, "%s_%d", resp, i);
+            if (stat(new_path, &finfo) == 0) {
+                new_pei = WMail2Pei(new_path, ppei, dir);
+                if (new_pei != NULL) {
+                    /* service type */
+                    PeiNewComponent(&cmpn, pei_serv_id);
+                    PeiCompCapTime(cmpn, ppei->time_cap);
+                    PeiCompAddStingBuff(cmpn, "Libero");
+                    PeiAddComponent(new_pei, cmpn);
+                    //PeiPrint(new_pei);
+                    PeiIns(new_pei);
+                }
+                else {
+                    LogPrintfPei(LV_ERROR, ppei, "Libero python Decoding failed");
+                }
+                i++;
+            }
+            else {
+                /* end */
+                i = 0;
+            }
+        } while (i);
+    }
+
+    if (ppei != NULL)
+        PeiFree(ppei);
+
+    FTFree(&val, FT_STRING);
+    return NULL;
+}
+
+
+static pei *WMLiberoMobi(const pei *ppei)
+{
+    char *url, *rqh, *rsh, *rqb, *rsb, *dir;
+    pei_component *cmpn;
+    const pstack_f *frame;
+    ftval val;
+    char new_path[WMAIL_STR_DIM];
+    char resp[WMAIL_STR_DIM];
+    char cmd[WMAIL_STR_DIM*2];
+    int ret, i;
+    pei *new_pei;
+    struct stat finfo;
+    bool out;
+
+    resp[0] = '\0';
+    out = FALSE;
+
+    /* encoding */
+    frame = ProtStackSearchProt(ppei->stack, http_id);
+    if (frame) {
+        ProtGetAttr(frame, http_encoding_id, &val);
+    }
+    url = rqh = rsh = rqb = rsb = NULL;
+    cmpn = ppei->components;
+    while (cmpn != NULL) {
+        if (cmpn->eid == pei_dir_id) {
+            if (strcmp(cmpn->strbuf, "r") == 0)
+                out = FALSE;
+            else if (strcmp(cmpn->strbuf, "s") == 0)
+                out = TRUE;
+            dir = cmpn->strbuf;
+        }
+        else if (cmpn->eid == pei_url_id) {
+            url = cmpn->strbuf;
+            url = url;
+        }
+        else if (cmpn->eid == pei_req_header_id) {
+            rqh = cmpn->file_path;
+        }
+        else if (cmpn->eid == pei_req_body_id) {
+            rqb = cmpn->file_path;
+        }
+        else if (cmpn->eid == pei_res_header_id) {
+            rsh = cmpn->file_path;
+        }
+        else if (cmpn->eid == pei_res_body_id) {
+            rsb = cmpn->file_path;
+        }
+        
+        cmpn = cmpn->next;
+    }
+    
+    /* sent or received */
+    if (!out && rsb != NULL) {
+        /* received */
+        sprintf(resp, "%s/libero_%lu_%p_%i", ProtTmpDir(), time(NULL), rsb, inc++);
+        if (val.str[0] != '\0') {
+            /* compressed */
+            sprintf(new_path, "%s.dec", rsb);
+            FFormatUncompress(val.str, rsb, new_path);
+            remove(rsb);
+            sprintf(cmd, "./wbm_libero.pyc -m %s %s", new_path, resp);
+        }
+        else {
+            /* not compressed */
+            sprintf(cmd, "./wbm_libero.pyc -m %s %s", rsb, resp);
+        }
+        
+        /* extract all information:
+           from, to, cc, bcc, subject, email */
+        ret = system(cmd);
+        if (ret == -1) {
+            LogPrintfPei(LV_WARNING, ppei, "Libero python (wbm_libero.pyc) system error: %s", rsb);
+        }
+        else if (WEXITSTATUS(ret) != 0) {
+            LogPrintfPei(LV_WARNING, ppei, "Libero python (wbm_libero.pyc) error: %s", rsb);
+        }
+    }
+    else if (out && rqb != NULL) {
+    }
+
+    if (resp[0] != '\0') {
+        /* mail decoded */
+        i = 0;
+        do {
+            sprintf(new_path, "%s_%d", resp, i);
+            if (stat(new_path, &finfo) == 0) {
+                new_pei = WMail2Pei(new_path, ppei, dir);
+                if (new_pei != NULL) {
+                    /* service type */
+                    PeiNewComponent(&cmpn, pei_serv_id);
+                    PeiCompCapTime(cmpn, ppei->time_cap);
+                    PeiCompAddStingBuff(cmpn, "Libero");
+                    PeiAddComponent(new_pei, cmpn);
+                    PeiIns(new_pei);
+                }
+                else {
+                    LogPrintfPei(LV_WARNING, ppei, "Live python Decoding failed");
+                }
+                i++;
+            }
+            else {
+                /* end */
+                i = 0;
+            }
+        } while (i);
+    }
+
+    FTFree(&val, FT_STRING);
+    return NULL;
+}
+
+
 int AnalyseInit(void)
 {    
     /* initialize */
+    inc = 0;
+    yahoo_m = aol_m = hotmail_m = yandroid_m = gmail_m = 0;
+    libero_m = alice_m = 0;
+    libero = NULL;
+    alice = NULL;
     
     http_id = ProtId("http");
     if (http_id != -1) {
@@ -1201,6 +1832,18 @@ int AnalysePei(pei *ppei)
             else if (strcmp(cmpn->strbuf, WMAIL_SERVICE_HOTMAIL) == 0) {
                 type = WMS_HOTMAIL;
             }
+            else if (strcmp(cmpn->strbuf, WMAIL_SERVICE_ROSSOALICE) == 0) {
+                type = WMS_ROSSOALICE;
+            }
+            else if (strcmp(cmpn->strbuf, WMAIL_SERVICE_LIBERO_OLD) == 0) {
+                type = WMS_LIBERO_OLD;
+            }
+            else if (strcmp(cmpn->strbuf, WMAIL_SERVICE_LIBERO_MOBI) == 0) {
+                type = WMS_LIBERO_MOBI;
+            }
+            else if (strcmp(cmpn->strbuf, WMAIL_SERVICE_LIBERO) == 0) {
+                type = WMS_LIBERO;
+            }
             break;
         }
     }
@@ -1213,36 +1856,68 @@ int AnalysePei(pei *ppei)
 
     case WMS_YAHOO:
         npei = WMYahoo(ppei);
+
         PeiDestroy(ppei);
+        yahoo_m++;
         break;
 
     case WMS_YAHOO_V2:
         npei = WMYahooV2(ppei);
+
         PeiDestroy(ppei);
         break;
 
     case WMS_YAHOO_DRIOD:
         npei = WMYahooAndroid(ppei);
+
         PeiDestroy(ppei);
         break;
 
     case WMS_AOL:
         npei = WMAol(ppei);
+
         PeiDestroy(ppei);
+        aol_m++;
         break;
 
     case WMS_AOL_V2:
         npei = WMAolV2(ppei);
+
         PeiDestroy(ppei);
         break;
 
     case WMS_HOTMAIL:
         npei = WMHotmail(ppei);
+
         PeiDestroy(ppei);
+        hotmail_m++;
+        break;
+        
+    case WMS_ROSSOALICE:
+        npei = WMRossoAlice(ppei);
+        break;
+
+    case WMS_LIBERO_OLD:
+        npei = WMLiberoOld(ppei);
+
+        PeiDestroy(ppei);
+        libero_m++;
+        break;
+
+    case WMS_LIBERO:
+        npei = WMLibero(ppei);
+        libero_m++;
+        break;
+
+    case WMS_LIBERO_MOBI:
+        npei = WMLiberoMobi(ppei);
+
+        PeiDestroy(ppei);
+        libero_m++;
         break;
 
     case WMS_NONE:
-        LogPrintfPei(LV_WARNING, ppei,"Web mail uncknow: %s", unck);
+        LogPrintfPei(LV_WARNING, ppei,"Web mail unknown: %s", unck);
     }
     
     if (npei != NULL) {
@@ -1255,6 +1930,17 @@ int AnalysePei(pei *ppei)
 
 int AnalyseEnd(void)
 {
+    LogPrintf(LV_STATUS, "-------------------------");
+    LogPrintf(LV_STATUS, "Mails statistics:");
+    LogPrintf(LV_STATUS, "   Gmail: %d", gmail_m);
+    LogPrintf(LV_STATUS, "   Yahoo!: %d", yahoo_m);
+    LogPrintf(LV_STATUS, "   AOL: %d", aol_m);
+    LogPrintf(LV_STATUS, "   HotMail/Live: %d", hotmail_m);
+    LogPrintf(LV_STATUS, "   Yahoo! Android: %d", yandroid_m);
+    LogPrintf(LV_STATUS, "   Libero: %d", libero_m);
+    LogPrintf(LV_STATUS, "   Alice: %d", alice_m);
+    LogPrintf(LV_STATUS, "-------------------------");
+    
     return 0;
 }
 

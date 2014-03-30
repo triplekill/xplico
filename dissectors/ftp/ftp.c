@@ -6,7 +6,7 @@
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2012 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  * based on: packet-ftp.c of Wireshark
  *   Copyright 1998 Gerald Combs
@@ -571,22 +571,195 @@ static bool FtpParsePasv(const char *line, int linelen, ftp_con *ftp)
         while ((c = *p) != '\0' && isdigit(c))
             p++;
     }
-
+    xfree(args);
+    
     return ret;
+}
+
+
+static bool IsRTF2428Delimiter(const int c)
+{
+    /* RFC2428 sect. 2 states rules for a valid delimiter */
+    static const char forbidden[] = {"0123456789abcdef.:"};
+    if (c < 33 || c > 126)
+        return FALSE;
+    else if (strchr(forbidden, tolower(c)))
+        return FALSE;
+    else
+        return TRUE;
 }
 
 
 static bool FtpParseLpasv(const char *line, int linelen, ftp_con *ftp)
 {
-#warning "to extract information from LPASV and LPRT"
-    return FALSE;
+    int args[40], i, j;
+    char c, buff[linelen+1];
+    char *n, *p = buff;
+    
+    strcpy(buff, line);
+    buff[linelen] = '\0';
+    
+    do {
+        while ((c = *p) != '\0' && !isdigit(c))
+            p++;
+        if (*p != '\0' && p[1] == ',')
+            break;
+        else
+            p++;
+    } while (*p != '\0');
+
+    if (*p == '\0')
+        return FALSE;
+    
+    i = 0;
+    n = strchr(p, ',');
+    while (n != NULL) {
+        *n = '\0';
+        args[i] = atoi(p);
+        i++;
+        p = n + 1;
+        n = strchr(p, ',');
+    }
+    args[i] = atoi(p);
+    i++;
+
+    if (i != 21 && i != 9)
+        return FALSE;
+
+    if (args[0] == 6) {
+        if (args[1] != 16)
+            return FALSE;
+        ftp->ipv_id = ipv6_id;
+        for (j=0; j!=16; j++) {
+            ftp->ip.ipv6[j] = args[2+j];
+        }
+        ftp->port.uint16 = ((args[19] & 0xFF)<<8) | (args[20] & 0xFF);
+    }
+    else if (args[0] == 4) {
+        if (args[1] != 4)
+            return FALSE;
+        ftp->ipv_id = ip_id;
+        ftp->port.uint16 = ((args[7] & 0xFF)<<8) | (args[8] & 0xFF);
+        ftp->ip.uint32 = htonl((args[2] << 24) | (args[3] <<16) | (args[4] <<8) | args[5]);
+    }
+    else {
+        LogPrintf(LV_WARNING, "LPASV and LPRT not supported (not IPv4 and not IPv6)!");
+    }
+    
+    return TRUE;
 }
 
 
-static bool FtpParseEpasv(const char *line, int linelen, ftp_con *ftp)
+static bool FtpParseEpasv(const char *line, int linelen, ftp_con *ftp, bool req)
 {
-#warning "to extract information from EPASV and EPRT"
-    return FALSE;
+    char *args, *p, *field;
+    char delimiter;
+    int n, delimiters_seen, fieldlen, lastn;
+    bool ret = TRUE;
+    char buff[linelen];
+    
+    if (line == NULL || linelen < 4)
+        return FALSE;
+    if (req) {
+        args = strchr(line, ' ');
+    }
+    else {
+        args = strchr(line, '(');
+    }
+    
+    if (args == NULL)
+        return FALSE;
+
+    args++;
+    p = args;
+    linelen -= (p - line);
+    
+    /*
+     * RFC2428 sect. 2 states ...
+     *
+     *     The EPRT command keyword MUST be followed by a single space (ASCII
+     *     32). Following the space, a delimiter character (<d>) MUST be
+     *     specified.
+     *
+     * ... the preceding <space> is already stripped so we know that the first
+     * character must be the delimiter and has just to be checked to be valid.
+     */
+    if (!IsRTF2428Delimiter(*p))
+        return FALSE;  /* EPRT command does not follow a vaild delimiter;
+                        * malformed EPRT command - immediate escape */
+
+    delimiter = *p;
+    delimiters_seen = 0;
+    /* Validate that the delimiter occurs 4 times in the string */
+    for (n = 0; n < linelen; n++) {
+        if (*(p+n) == delimiter)
+            delimiters_seen++;
+    }
+    if (delimiters_seen != 4)
+        return FALSE; /* delimiter doesn't occur 4 times
+                       * probably no EPRT request - immediate escape */
+    
+    /* we know that the first character is a delimiter... */
+    delimiters_seen = 1;
+    lastn = 0;
+    /* ... so we can start searching from the 2nd onwards */
+    for (n=1; n < linelen; n++) {
+        if (*(p+n) != delimiter)
+            continue;
+
+        /* we found a delimiter */
+        delimiters_seen++;
+
+        fieldlen = n - lastn - 1;
+        if (fieldlen <= 0 && req)
+            return FALSE; /* all fields must have data in them */
+        
+        field =  p + lastn + 1;
+
+        if (delimiters_seen == 2) {     /* end of address family field */
+            strncpy(buff, field, fieldlen);
+            buff[fieldlen] = '\0';
+            switch (atoi(buff)) {
+            case 1:
+                ftp->ipv_id = ip_id;
+                break;
+                
+            case 2:
+                ftp->ipv_id = ipv6_id;
+                break;
+            }
+        }
+        else if (delimiters_seen == 3 && req) {/* end of IP address field */
+            strncpy(buff, field, fieldlen);
+            buff[fieldlen] = '\0';
+
+            if (ftp->ipv_id == ip_id) {
+                if (inet_pton(AF_INET, buff, &ftp->ip.uint32) > 0)
+                    ret = TRUE;
+                else
+                    ret = FALSE;
+            }
+            else if (ftp->ipv_id == ipv6_id) {
+                if (inet_pton(AF_INET6, buff, ftp->ip.ipv6) > 0) {
+                    ret = TRUE;
+                }
+                else
+                    ret = FALSE;
+            }
+            else
+                return FALSE; /* invalid/unknown address family */
+        }
+        else if (delimiters_seen == 4) {/* end of port field */
+            strncpy(buff, field, fieldlen);
+            buff[fieldlen] = '\0';
+
+            ftp->port.uint16 = atoi(buff);
+        }
+
+        lastn = n;
+    }
+
+    return ret;
 }
 
 
@@ -824,7 +997,7 @@ static int FtpPeiNum(ftp_con *ftp, pei *ppei)
     PeiCompCapTime(cmpn, ppei->time_cap);
     cmpn->strbuf = num;
     if (last == NULL)
-         ppei->components = cmpn;
+        ppei->components = cmpn;
     else {
         last->next = cmpn;
         last = cmpn;
@@ -838,7 +1011,11 @@ static int FtpPeiNum(ftp_con *ftp, pei *ppei)
     cmpn->eid = pei_down_n_id;
     cmpn->time_cap = ppei->time_cap;
     cmpn->strbuf = num;
-    last->next = cmpn;
+    if (last == NULL)
+        ppei->components = cmpn;
+    else {
+        last->next = cmpn;
+    }
 
     return 0;
 }
@@ -847,13 +1024,12 @@ static int FtpPeiNum(ftp_con *ftp, pei *ppei)
 static int FtpPeiCmd(ftp_con *ftp, pei *ppei)
 {
     pei_component *cmpn, *last, *tmpn;
-    int ind, len;
+    int len;
     char *url;
     const pstack_f *ip;
     ftval val;
 
     /* last component */
-    ind = 0;
     last = ppei->components;
     while (last != NULL && last->next != NULL) {
         last = last->next;
@@ -947,9 +1123,7 @@ static int FtpPeiData(ftp_data *ftpd, pei *ppei)
 {
     pei_component *cmpn;
     char offset_str[100];
-    int ind;
 
-    ind = 0;
     cmpn = NULL;
 
     /* main info */
@@ -1130,7 +1304,7 @@ static int FtpConnec(int flow_id, ftp_priv *priv)
                             break;
 
                         case FTP_CMD_EPRT:
-                            ftp.data_setup = FtpParseEpasv(lineend, lend-lineend, &ftp);
+                            ftp.data_setup = FtpParseEpasv(lineend, lend-lineend, &ftp, TRUE);
                             FtpDataRule(flow_id, &ftp); /* it guarantees  the connection of flow with TCP with ack verification */
                             break;
 
@@ -1184,7 +1358,23 @@ static int FtpConnec(int flow_id, ftp_priv *priv)
                             break;
 
                         case FTP_REP_229:
-                            ftp.data_setup = FtpParseEpasv(lineend, lend-lineend, &ftp);
+                            ftp.data_setup = FtpParseEpasv(lineend, lend-lineend, &ftp, FALSE);
+                            if (priv->ipv6)
+                                ftp.ipv_id = ipv6_id;
+                            else
+                                ftp.ipv_id = ip_id;
+                            if (priv->dir == FTP_CLT_DIR_OK) {
+                                if (priv->ipv6)
+                                    FTCopy(&ftp.ip, &priv->ipd, FT_IPv6);
+                                else
+                                    FTCopy(&ftp.ip, &priv->ipd, FT_IPv4);
+                            }
+                            else {
+                                if (priv->ipv6)
+                                    FTCopy(&ftp.ip, &priv->ip, FT_IPv6);
+                                else
+                                    FTCopy(&ftp.ip, &priv->ip, FT_IPv4);
+                            }
                             FtpDataRule(flow_id, &ftp); /* it guarantees  the connection of flow with TCP with ack verification */
                             break;
 
@@ -1446,6 +1636,7 @@ static int FtpConnec(int flow_id, ftp_priv *priv)
                             fclose(ftpd->fp);
                             ftpd->fp = NULL;
                         }
+                        FlowDelete(ftpd->fid);
                         ftpd->fid = -1;
                         
                         /* compose and insert pei */

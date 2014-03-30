@@ -127,6 +127,13 @@ int DissecRegist(const char *file_cfg)
     dep.type = FT_UINT16;
     dep.val.uint16 = ETHERTYPE_PPPOES;
     ProtDep(&dep);
+    
+    /* vlan dependence */
+    dep.name = "vlan";
+    dep.attr = "vlan.type";
+    dep.type = FT_UINT16;
+    dep.val.uint16 = ETHERTYPE_PPPOES;
+    ProtDep(&dep);
 
     /* rule */
     /*ProtAddRule("(pppoe.session_id == pkt.pppoe.session_id)");*/

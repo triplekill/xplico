@@ -68,4 +68,6 @@ void DMemState(void);
 #endif
 
 
+unsigned long ThreadStackSize(void);
+
 #endif /* __DMEMORY_H__ */

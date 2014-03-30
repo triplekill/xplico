@@ -41,7 +41,10 @@ class SolsController extends AppController {
     var $name = 'Sols';
     var $helpers = array('Html', 'Form', 'Javascript');
     var $components = array('Xplico');
-    var $uses = array('Sol', 'Pol', 'User', 'Source', 'Email', 'Web', 'Ftp', 'Ftp_file', 'Sip', 'Mm', 'Mmscontent', 'Pjl', 'Feed', 'Tftp', 'Tftp_file', 'DnsMessage', 'Nntp_group', 'Nntp_article', 'Fbuchat', 'Fbchat', 'Telnet', 'Webmail', 'Httpfile', 'Unknow', 'Rtp', 'Arp', 'Irc', 'Irc_channel', 'Paltalk_exp', 'Paltalk_room', 'Msn_chat', 'Icmpv6', 'Syslog');
+    var $uses = array('Sol', 'Pol', 'User', 'Source', 'Email', 'Web', 'Ftp', 'Ftp_file', 'Sip', 'Mm', 'Mmscontent',
+                      'Pjl', 'Feed', 'Tftp', 'Tftp_file', 'DnsMessage', 'Nntp_group', 'Nntp_article', 'Fbuchat',
+                      'Fbchat', 'Telnet', 'Webmail', 'Httpfile', 'Unknow', 'Rtp', 'Arp', 'Irc', 'Irc_channel',
+                      'Paltalk_exp', 'Paltalk_room', 'Msn_chat', 'Icmpv6', 'Syslog', 'Unkfile', 'Webymsg');
     var $pcap_limit = 10485760;
     
     function beforeFilter() {
@@ -193,7 +196,10 @@ class SolsController extends AppController {
 
             // email number
             $this->Email->recursive = -1;
-            $eml_received =  $this->Email->find('count', array('conditions' => ("sol_id = $id AND receive = 1".$host_srch)));
+            $eml_received = $this->Email->find('count', array('conditions' => ("sol_id = $id AND receive = TRUE".$host_srch)));
+            if ($eml_received == '') {
+                $eml_received = $this->Email->find('count', array('conditions' => ("sol_id = $id AND receive = 1".$host_srch)));
+            }
             $eml_total = $this->Email->find('count', array('conditions' => ("sol_id = $id".$host_srch)));
             $eml_sended = $eml_total - $eml_received;
             $eml_unread =  $eml_total - $this->Email->find('count', array('conditions' => ("sol_id = $id AND first_visualization_user_id != 0".$host_srch)));
@@ -273,7 +279,10 @@ class SolsController extends AppController {
             // webmail
             $this->Webmail->recursive = -1;
             $webmail_num = $this->Webmail->find('count', array('conditions' => ("sol_id = $id".$host_srch)));
-            $webmail_received =  $this->Webmail->find('count', array('conditions' => ("sol_id = $id AND receive = 1".$host_srch)));
+            $webmail_received =  $this->Webmail->find('count', array('conditions' => ("sol_id = $id AND Webmail.receive = TRUE".$host_srch)));
+            if ($webmail_received == '') {
+                $webmail_received =  $this->Webmail->find('count', array('conditions' => ("sol_id = $id AND Webmail.receive = 1".$host_srch)));
+            }
             $this->set('webmail_num', $webmail_num);
             $this->set('webmail_receiv', $webmail_received);
             $this->set('webmail_sent', $webmail_num - $webmail_received);
@@ -314,10 +323,18 @@ class SolsController extends AppController {
             $this->Icmpv6->recursive = -1;
             $icmpv6_num = $this->Icmpv6->find('count', array('conditions' => ("sol_id = $id")));
             $this->set('icmpv6_num', $icmpv6_num);
+            // dig
+            $this->Unkfile->recursive = -1;
+            $dig_num = $this->Unkfile->find('count', array('conditions' => ("sol_id = $id".$host_srch)));
+            $this->set('dig_num', $dig_num);
             // syslog number
             $this->Syslog->recursive = -1;
             $syslog_num = $this->Syslog->find('count', array('conditions' => ("sol_id = $id".$host_srch)));
             $this->set('syslog_num', $syslog_num);
+            // yahoo msg
+            $this->Webymsg->recursive = -1;
+            $webymsg = $this->Webymsg->find('count', array('conditions' => ("sol_id = $id".$host_srch)));
+            $this->set('webymsg', $webymsg);
             
             // estimated time
             $fh = @fopen('/opt/xplico/pol_'.$sol['Sol']['pol_id'].'/tmp/elab_status.log', 'r');

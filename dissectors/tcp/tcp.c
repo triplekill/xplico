@@ -39,8 +39,10 @@
 #include "embedded.h"
 #include "configs.h"
 
-#define TCP_ORD_PRINT 0
-#define printf(arg...)
+#define TCP_ORD_PRINT           0
+#if TCP_ORD_PRINT==0
+# define printf(arg...)
+#endif
 
 static int ip_id;
 static int ipv6_id;
@@ -61,6 +63,16 @@ static int dst_id;
 static int clnt_id;
 static int lost_id;
 static int syn_id;
+
+
+typedef struct _oflow oflow;
+struct _oflow {
+    bool ipv4;
+    ftval ip_mx;
+    unsigned short port_mx;
+    ftval ip_mn;
+    unsigned short port_mn;
+};
 
 
 static void TcpOrdInit(order *ord, pstack_f *stk)
@@ -388,7 +400,7 @@ static int TcpFlush(int flow_id, order *ord, bool mono)
 
 static int TcpOrder(int flow_id, order *ord, packet *pkt, unsigned long seq, unsigned long nxt_seq, bool src)
 {
-    struct seq **queue, *oqueue, *chk, *pre, **last_sq, *last_rv, *new, *tmp;
+    struct seq **queue, *chk, *pre, **last_sq, *last_rv, *new, *tmp;
     unsigned long nseq, cnt;
     long delta;
     bool same, cng;
@@ -397,7 +409,6 @@ static int TcpOrder(int flow_id, order *ord, packet *pkt, unsigned long seq, uns
     same = FALSE;
     if (src == TRUE) {
         queue = &ord->src;
-        oqueue = ord->dst;
         chk = ord->src;
         nseq = ord->seq_s;
         last_sq = &ord->last_src;
@@ -407,7 +418,6 @@ static int TcpOrder(int flow_id, order *ord, packet *pkt, unsigned long seq, uns
     }
     else {
         queue = &ord->dst;
-        oqueue = ord->src;
         chk = ord->dst;
         nseq = ord->seq_d;
         last_sq = &ord->last_dst;
@@ -702,20 +712,17 @@ static bool TcpAck(int flow_id, order *ord, unsigned long ack_seq, bool src)
     packet *hole;
     ftval val;
     pstack_f *stk;
-    packet **ack;
     bool ret = FALSE;
 
     /* select sequence to analize */
     if (src == TRUE) {
         head = &ord->dst;
-        ack = &ord->ack_d;
         chk = ord->dst;
         seq = ord->seq_d;
         stk = ord->stk_d;
     }
     else {
         head = &ord->src;
-        ack = &ord->ack_s;
         chk = ord->src;
         seq = ord->seq_s;
         stk = ord->stk_s;
@@ -1090,7 +1097,9 @@ static void TcpSubDissector(int flow_id, packet *pkt)
     /* check ack */
     ack = FALSE;
     if (tcp->ack == 1) {
+#if TCP_ENABLE_TCP_ACK
         ack = TcpAck(flow_id, ord, ack_seq, src);
+#endif
     }
 
     /* check urg */
@@ -1263,6 +1272,147 @@ static packet* TcpDissector(packet *pkt)
 }
 
 
+int DissectFlowHash(cmpflow *fd, unsigned long *hashs)
+{
+    oflow *o;
+    ftval tmp;
+    const pstack_f *ip;
+    
+    fd->priv = xmalloc(sizeof(oflow));
+    memset(fd->priv, 0, sizeof(oflow));
+    o = fd->priv;
+    
+    ip = ProtGetNxtFrame(fd->stack);
+    if (ProtFrameProtocol(ip) == ip_id) {
+        o->ipv4 = TRUE;
+        hashs[0] = 0;
+        ProtGetAttr(ip, ip_dst_id, &o->ip_mx);
+        ProtGetAttr(ip, ip_src_id, &o->ip_mn);
+        hashs[1] = o->ip_mx.uint32 + o->ip_mn.uint32;
+        if (o->ip_mx.uint32 < o->ip_mn.uint32) {
+            tmp = o->ip_mn;
+            o->ip_mn = o->ip_mx;
+            o->ip_mx = tmp;
+            ProtGetAttr(fd->stack, src_id, &tmp);
+            o->port_mx = tmp.uint16;
+            hashs[1] += tmp.uint16;
+            ProtGetAttr(fd->stack, dst_id, &tmp);
+            o->port_mn = tmp.uint16;
+            hashs[1] += tmp.uint16;
+        }
+        else {
+            ProtGetAttr(fd->stack, dst_id, &tmp);
+            o->port_mx = tmp.uint16;
+            hashs[1] += tmp.uint16;
+            ProtGetAttr(fd->stack, src_id, &tmp);
+            o->port_mn = tmp.uint16;
+            hashs[1] += tmp.uint16;
+        }
+    }
+    else {
+        o->ipv4 = FALSE;
+        hashs[0] = 1;
+        ProtGetAttr(ip, ipv6_dst_id, &o->ip_mx);
+        ProtGetAttr(ip, ipv6_src_id, &o->ip_mn);
+        hashs[1] = FTHash(&o->ip_mx, FT_IPv6);
+        hashs[1] += FTHash(&o->ip_mn, FT_IPv6);
+        if (memcmp(o->ip_mx.ipv6, o->ip_mn.ipv6, 16) < 0) {
+            tmp = o->ip_mn;
+            o->ip_mn = o->ip_mx;
+            o->ip_mx = tmp;
+            ProtGetAttr(fd->stack, src_id, &tmp);
+            o->port_mx = tmp.uint16;
+            hashs[1] += tmp.uint16;
+            ProtGetAttr(fd->stack, dst_id, &tmp);
+            o->port_mn = tmp.uint16;
+            hashs[1] += tmp.uint16;
+        }
+        else {
+            ProtGetAttr(fd->stack, dst_id, &tmp);
+            o->port_mx = tmp.uint16;
+            hashs[1] += tmp.uint16;
+            ProtGetAttr(fd->stack, src_id, &tmp);
+            o->port_mn = tmp.uint16;
+            hashs[1] += tmp.uint16;
+        }
+    }
+    
+    return 0;
+}
+
+
+int DissectFlowCmpFree(cmpflow *fd)
+{
+    xfree(fd->priv);
+    
+    return 0;
+}
+
+
+int DissectFlowCmp(const cmpflow *fd_a, const cmpflow *fd_b)
+{
+    oflow *fa, *fb;
+    
+    fa = (oflow *)fd_a->priv;
+    fb = (oflow *)fd_b->priv;
+    
+    if (fa->ipv4) {
+        if (fa->ip_mn.uint32 < fb->ip_mn.uint32)
+            return -1;
+        else {
+            if (fa->ip_mn.uint32 > fb->ip_mn.uint32)
+                return 1;
+        }
+        if (fa->port_mn < fb->port_mn)
+            return -1;
+        else {
+            if (fa->port_mn > fb->port_mn)
+                return 1;
+        }
+        if (fa->ip_mx.uint32 < fb->ip_mx.uint32)
+            return -1;
+        else {
+            if (fa->ip_mx.uint32 > fb->ip_mx.uint32)
+                return 1;
+        }
+        if (fa->port_mx < fb->port_mx)
+            return -1;
+        else {
+            if (fa->port_mx > fb->port_mx)
+                return 1;
+        }
+    }
+    else {
+        if (memcmp(fa->ip_mn.ipv6, fb->ip_mn.ipv6, 16) < 0)
+            return -1;
+        else {
+            if (memcmp(fa->ip_mn.ipv6, fb->ip_mn.ipv6, 16) > 0)
+                return 1;
+        }
+        if (fa->port_mn < fb->port_mn)
+            return -1;
+        else {
+            if (fa->port_mn > fb->port_mn)
+                return 1;
+        }
+        if (memcmp(fa->ip_mx.ipv6, fb->ip_mx.ipv6, 16) < 0)
+            return -1;
+        else {
+            if (memcmp(fa->ip_mx.ipv6, fb->ip_mx.ipv6, 16) > 0)
+                return 1;
+        }
+        if (fa->port_mx < fb->port_mx)
+            return -1;
+        else {
+            if (fa->port_mx > fb->port_mx)
+                return 1;
+        }
+    }
+
+    return 0;
+}
+
+
 int DissecRegist(const char *file_cfg)
 {
     proto_info info;
@@ -1317,12 +1467,6 @@ int DissecRegist(const char *file_cfg)
     dep.type = FT_UINT8;
     dep.val.uint8 = IP_PROTO_TCP;
     ProtDep(&dep);
-
-    /* rule: ipv4*/
-    ProtAddRule("((((ip.src == pkt.ip.src) AND (tcp.srcport == pkt.tcp.srcport)) AND ((ip.dst == pkt.ip.dst) AND (tcp.dstport == pkt.tcp.dstport))) OR (((ip.src == pkt.ip.dst) AND (tcp.srcport == pkt.tcp.dstport)) AND ((ip.dst == pkt.ip.src) AND (tcp.dstport == pkt.tcp.srcport))))");
-
-    /* rule: ipv6 */
-    ProtAddRule("((((ipv6.src == pkt.ipv6.src) AND (tcp.srcport == pkt.tcp.srcport)) AND ((ipv6.dst == pkt.ipv6.dst) AND (tcp.dstport == pkt.tcp.dstport))) OR (((ipv6.src == pkt.ipv6.dst) AND (tcp.srcport == pkt.tcp.dstport)) AND ((ipv6.dst == pkt.ipv6.src) AND (tcp.dstport == pkt.tcp.srcport))))");
 
     /* dissectors registration */
     ProtDissectors(TcpDissector, NULL, NULL, NULL);

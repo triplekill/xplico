@@ -115,6 +115,9 @@ int CfgParamStr(const char *cfg_file, const char *rparam, char *ret_val, int rsi
     char *param;
     int res, ret;
 
+    if (cfg_file == NULL)
+        return -1;
+        
     ret = -1;
     /* configuration file is without errors! */
     fp = fopen(cfg_file, "r");
@@ -174,6 +177,9 @@ int CfgParamInt(const char *cfg_file, const char *rparam, long *rval)
     char *param;
     int res, ret;
 
+    if (cfg_file == NULL)
+        return -1;
+        
     ret = -1;
     /* configuration file is without errors! */
     fp = fopen(cfg_file, "r");

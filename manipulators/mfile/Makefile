@@ -41,7 +41,7 @@ OBJ = $(SRC:.c=.o)
 DEP = ../core/mmain.c mpei.c analyse.c
 
 # compilation
-LDFLAGS =  -L$(ROOT_DIR) -ldl -lpthread -lz
+LDFLAGS =  -L$(ROOT_DIR) -ldl -lpthread -lz -lssl -lcrypto
 
 # cflags
 CFLAGS += -I./include

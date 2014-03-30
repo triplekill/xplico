@@ -837,7 +837,14 @@ static int SipCallPei(sip_call *call)
         LogPrintf(LV_WARNING, "videosnarf failed");
     }
     else if (WEXITSTATUS(ret) != 0) {
-        LogPrintf(LV_WARNING, "videosnarf crash");
+        switch (WEXITSTATUS(ret)) {
+	case 127:
+            LogPrintf(LV_WARNING, "'videosnarf' command not found by shell");
+            break;
+
+        default:
+            LogPrintf(LV_WARNING, "videosnarf crashed");
+        }
     }
     sprintf(cmd, "videosnarf -i %s -o %s 2>/dev/null 1>/dev/null", call->cd.file_name, call->cd.file_name);
     ret = system(cmd);
@@ -846,7 +853,14 @@ static int SipCallPei(sip_call *call)
             LogPrintf(LV_WARNING, "videosnarf failed");
         }
         else if (WEXITSTATUS(ret) != 0) {
-            LogPrintf(LV_WARNING, "videosnarf crash");
+            switch (WEXITSTATUS(ret)) {
+            case 127:
+                LogPrintf(LV_WARNING, "'videosnarf' command not found by shell");
+                break;
+
+            default:
+                LogPrintf(LV_WARNING, "videosnarf crash");
+            }
         }
     }
     /* delete pcap files */
@@ -888,7 +902,7 @@ static int SipCallPei(sip_call *call)
         aud2 = TRUE;
         /* convert to be used with lame */
         sprintf(tmp_file_2, "%s_2.wav", media_conv);
-        sprintf(cmd, "sox %s -s %s 2>/dev/null 1>/dev/null", media_file_2, tmp_file_2);
+        sprintf(cmd, "sox %s -e signed-integer %s 2>/dev/null 1>/dev/null", media_file_2, tmp_file_2);
         ret = system(cmd);
 #if NO_DEBUG_RM
         remove(media_file_2);
@@ -901,7 +915,14 @@ static int SipCallPei(sip_call *call)
             LogPrintf(LV_WARNING, "lame failed");
         }
         else if (WEXITSTATUS(ret) != 0) {
-            LogPrintf(LV_WARNING, "lame crash: %s", cmd);
+            switch (WEXITSTATUS(ret)) {
+            case 127:
+                LogPrintf(LV_WARNING, "'lame' command not found by shell");
+                break;
+                
+            default:
+                LogPrintf(LV_WARNING, "lame crashes: %s", cmd);
+            }
         }
         if (stat(media_file_2, &fsbuf) == 0) {
             PeiNewComponent(&cmpn, pei_audio_from_id);
@@ -911,8 +932,21 @@ static int SipCallPei(sip_call *call)
             PeiAddComponent(call->ppei, cmpn);
         }
         sprintf(media_file_2, "%s_stereo_2.wav", media_conv);
-        sprintf(cmd, "sox %s -c 2 %s pan 1 2>/dev/null 1>/dev/null", tmp_file_2, media_file_2);
+        sprintf(cmd, "sox %s -c 2 %s delay 0 remix 1v0 1 2>/dev/null 1>/dev/null", tmp_file_2, media_file_2);
         ret = system(cmd);
+        if (ret == -1) {
+            LogPrintf(LV_WARNING, "sox failed");
+        }
+        else if (WEXITSTATUS(ret) != 0) {
+            switch (WEXITSTATUS(ret)) {
+            case 127:
+                LogPrintf(LV_WARNING, "'sox' command not found by shell");
+                break;
+                
+            default:
+                LogPrintf(LV_WARNING, "sox crashed: %s", cmd);
+            }
+        }
 #if NO_DEBUG_RM
         remove(tmp_file_2);
 #endif
@@ -923,7 +957,7 @@ static int SipCallPei(sip_call *call)
         aud1 = TRUE;
         /* convert to be used with lame */
         sprintf(tmp_file_1, "%s_1.wav", media_conv);
-        sprintf(cmd, "sox %s -s %s 2>/dev/null 1>/dev/null", media_file_1, tmp_file_1);
+        sprintf(cmd, "sox %s -e signed-integer %s 2>/dev/null 1>/dev/null", media_file_1, tmp_file_1);
         ret = system(cmd);
 #if NO_DEBUG_RM
         remove(media_file_1);
@@ -936,7 +970,14 @@ static int SipCallPei(sip_call *call)
             LogPrintf(LV_WARNING, "lame failed");
         }
         else if (WEXITSTATUS(ret) != 0) {
-            LogPrintf(LV_WARNING, "lame crash %s", cmd);
+            switch (WEXITSTATUS(ret)) {
+            case 127:
+                LogPrintf(LV_WARNING, "'lame' command not found by shell");
+                break;
+                
+            default:
+                LogPrintf(LV_WARNING, "lame crashed: %s", cmd);
+            }
         }
         if (stat(media_file_1, &fsbuf) == 0) {
             PeiNewComponent(&cmpn, pei_audio_to_id);
@@ -946,8 +987,21 @@ static int SipCallPei(sip_call *call)
             PeiAddComponent(call->ppei, cmpn);
         }
         sprintf(media_file_1, "%s_stereo_1.wav", media_conv);
-        sprintf(cmd, "sox %s -c 2 %s pan -1 2>/dev/null 1>/dev/null", tmp_file_1, media_file_1);
+        sprintf(cmd, "sox %s -c 2 %s delay 0 remix 1 1v0 2>/dev/null 1>/dev/null", tmp_file_1, media_file_1);
         ret = system(cmd);
+        if (ret == -1) {
+            LogPrintf(LV_WARNING, "sox failed");
+        }
+        else if (WEXITSTATUS(ret) != 0) {
+            switch (WEXITSTATUS(ret)) {
+            case 127:
+                LogPrintf(LV_WARNING, "'sox' command not found by shell");
+                break;
+                
+            default:
+                LogPrintf(LV_WARNING, "sox crashed: %s", cmd);
+            }
+        }
 #if NO_DEBUG_RM
         remove(tmp_file_1);
 #endif
@@ -964,14 +1018,21 @@ static int SipCallPei(sip_call *call)
             sprintf(cmd, "sox %s %s 2>/dev/null 1>/dev/null", media_file_1, tmp_file_1);
         }
         else {
-            sprintf(cmd, "sox -m %s %s -s %s 2>/dev/null 1>/dev/null", media_file_2, media_file_1, tmp_file_1);
+            sprintf(cmd, "sox -m %s %s -e signed-integer %s 2>/dev/null 1>/dev/null", media_file_2, media_file_1, tmp_file_1);
         }
         ret = system(cmd);
         if (ret == -1) {
             LogPrintf(LV_WARNING, "sox failed");
         }
         else if (WEXITSTATUS(ret) != 0) {
-            LogPrintf(LV_WARNING, "sox mix crash: %s", cmd);
+            switch (WEXITSTATUS(ret)) {
+            case 127:
+                LogPrintf(LV_WARNING, "'sox' command not found by shell");
+                break;
+                
+            default:
+                LogPrintf(LV_WARNING, "sox mix crashed: %s", cmd);
+            }
         }       
         /* mp3 conversion */
         sprintf(cmd, "lame --quiet -h %s %s 2>/dev/null 1>/dev/null", tmp_file_1, tmp_file_2);

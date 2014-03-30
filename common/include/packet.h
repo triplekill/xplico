@@ -1,7 +1,7 @@
 /* packet.h
  * Definitions of packet struture and topology
  *
- * $Id: packet.h,v 1.11 2007/11/07 14:29:12 costa Exp $
+ * $Id: $
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
@@ -38,7 +38,7 @@ typedef struct _pstack_f pstack_f;
 struct _pstack_f {
     int pid;          /**< protocol id */
     bool flow;        /**< true if protocol is a protocol that generate flow */
-    int flow_id;      /**< flow id for flow equal a true */
+    int flow_id;      /**< flow id for flow equal to true */
     pstack_f *pfp;    /**< pre frame pointer */
     pstack_f *gstack; /**< next stack in group */
     ftval attr[2];    /**< protocol attribute */

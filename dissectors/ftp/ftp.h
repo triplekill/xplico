@@ -169,7 +169,7 @@ struct _ftp_priv {
     unsigned short port;    /* source port */
     bool ipv6;              /* ipv6 or ipv4 */
     ftval ip;               /* ip source */
-    ftval ipd;              /* ip source */
+    ftval ipd;              /* ip destination */
 };
 
 

@@ -44,6 +44,7 @@
 #include "dnsdb.h"
 #include "udp_garbage.h"
 #include "pei.h"
+#include "pcap_gfile.h"
 
 /* nDPI library */
 #include <libndpi/ndpi_api.h>
@@ -82,7 +83,6 @@ static struct ndpi_detection_module_struct *ndpi = NULL;
 static pthread_mutex_t ndpi_mux;  /* mutex to access the ndpi handler */
 static unsigned int ndpi_flow_struct_size;
 static unsigned int ndpi_proto_size;
-//static char *ndpi_prot_str[] = { NDPI_PROTOCOL_LONG_STRING };
 static long limit_pkts;
 
 
@@ -262,7 +262,7 @@ packet* UdpGrbDissector(int flow_id)
     char filename[256];
     int prot;
     struct pcap_file_header fh;
-    struct pcap_pkthdr pckt_header;
+    struct pcappkt_hdr pckt_header;
 #endif
     size_t flow_size;
     const char *l7prot_type;
@@ -391,22 +391,22 @@ packet* UdpGrbDissector(int flow_id)
                 l7prot_id = nDPIPacket(pkt, l7flow, l7dst, l7src, ipv4);
             }
             if (l7prot_id != NDPI_PROTOCOL_UNKNOWN) {
-                //l7prot_type = ndpi_prot_str[l7prot_id];
-            }
+                l7prot_type = ndpi_get_proto_name(ndpi, l7prot_id);
+	    }
         }
 #if GRB_FILE
         pckt_header.caplen = pkt->raw_len;
         pckt_header.len = pkt->raw_len;
-        pckt_header.ts.tv_sec = pkt->cap_sec;
-        pckt_header.ts.tv_usec = pkt->cap_usec;
+        pckt_header.tv_sec = pkt->cap_sec;
+	pckt_header.tv_usec = pkt->cap_usec;
         if (fd_pcap != -1) {
-            write(fd_pcap, (char *)&pckt_header, sizeof(struct pcap_pkthdr));
+            write(fd_pcap, (char *)&pckt_header, sizeof(struct pcappkt_hdr));
             write(fd_pcap, (char *)pkt->raw, pkt->raw_len);
         }
 #endif
         if (thrs != NULL) {
             /* check stream to find text */
-            if (threshold + pkt->len > UDP_GRB_THRESHOLD) {
+            if (threshold + pkt->len >= UDP_GRB_THRESHOLD) {
                 if (txt_data == FALSE) {
                     /* text flow */
                     txt_data = UdpGrbMajorityText(thrs, threshold);
@@ -437,8 +437,13 @@ packet* UdpGrbDissector(int flow_id)
                 else {
                     UdpGrbText(txt_fp, thrs, threshold);
                     threshold = 0;
-                    memcpy(thrs+threshold, pkt->data, pkt->len);
-                    threshold += pkt->len;
+                    if (pkt->len > UDP_GRB_THRESHOLD) {
+                        UdpGrbText(txt_fp, pkt->data, pkt->len);
+                    }
+                    else {
+                        memcpy(thrs+threshold, pkt->data, pkt->len);
+                        threshold += pkt->len;
+                    }
                     thrs[threshold] = '\0';
                 }
             }
@@ -451,7 +456,7 @@ packet* UdpGrbDissector(int flow_id)
         PktFree(pkt);
         pkt = FlowGetPkt(flow_id);
     }
-if (thrs != NULL) {
+    if (thrs != NULL) {
         if (txt_data == FALSE) {
             if (UdpGrbMajorityText(thrs, threshold) == TRUE) {
                 sprintf(txt_file, "%s/%s/udp_grb_%lu_%p_%i.txt", ProtTmpDir(), UDP_GRB_TMP_DIR, time(NULL), txt_file, incr++);

@@ -58,6 +58,7 @@
 #define WMAIL_FLD_FILENAME_DIM             9
 
 /* service type */
+#define WMAIL_SERVICE_ROSSOALICE        "rossoalice"
 #define WMAIL_SERVICE_YAHOO             "yahoo"
 #define WMAIL_SERVICE_YAHOO_V2          "yahoo_v2"
 #define WMAIL_SERVICE_AOL               "aol"
@@ -65,6 +66,11 @@
 #define WMAIL_SERVICE_HOTMAIL           "hotmail"
 #define WMAIL_SERVICE_GMAIL             "gmail"
 #define WMAIL_SERVICE_YAHOO_ANDRO       "yahoo mobile"
+#define WMAIL_SERVICE_LIBERO            "libero"
+#define WMAIL_SERVICE_LIBERO_OLD        "libero old"
+#define WMAIL_SERVICE_LIBERO_MOBI       "libero mobile"
+#define WMAIL_SERVICE_REDIFF            "rediff"
+
 
 typedef enum {
     WMS_YAHOO,
@@ -74,6 +80,11 @@ typedef enum {
     WMS_HOTMAIL,
     WMS_GMAIL,
     WMS_YAHOO_DRIOD,
+    WMS_ROSSOALICE,
+    WMS_LIBERO,
+    WMS_LIBERO_OLD,
+    WMS_LIBERO_MOBI,
+    WMS_REDIFF,
     WMS_NONE
 } service;
 

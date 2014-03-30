@@ -29,8 +29,6 @@
 
 /* count any group flow with same protocol, the master protocol */
 #define PROT_GRP_COUNT            1
-/* enable single rule verification */
-#define CHECK_SINGLE_RULE         1
 /* enable or disable the geo ip localization */
 #define XPL_GEO_IP                1
 /* timeout at the end, for dissectors in loop */
@@ -41,6 +39,7 @@
 /* memory debug and speed */
 #define XP_MEM_DEBUG              1
 #define XP_MEM_SPEED              0
-
+/* tcp ack elaboration */
+#define TCP_ENABLE_TCP_ACK        1
 
 #endif /* __CONFIGS_H__ */

@@ -6,7 +6,7 @@
  *
  * Xplico System
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2012 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -53,7 +53,7 @@ static void Usage(char *name)
     printf("\t-v version\n");
     printf("\t-c config file\n");
     printf("\t-d pols root dir\n");
-    printf("\t-b DB type (mysql or sqlite)\n");
+    printf("\t-b DB type (postgresql or mysql or sqlite)\n");
     printf("\t-h this help\n");
     printf("\n");
 }
@@ -576,7 +576,11 @@ static int ReadConfigFile(char *path, dbconf *db_c, char *root_dir, time_t *twpc
     char bufcpy[CFG_LINE_MAX_SIZE];
     char dbts[CFG_LINE_MAX_SIZE];
     char *param;
+    bool root = FALSE;
 
+    if (root_dir[0] != '\0')
+        root = TRUE;
+    
     fp = fopen(path, "r");
     if (fp == NULL) {
         printf("Config file \"%s\" can't be opened", path);
@@ -632,6 +636,35 @@ static int ReadConfigFile(char *path, dbconf *db_c, char *root_dir, time_t *twpc
                     }
                 }
             }
+            param = strstr(buffer, CFG_PAR_ROOT_DIR);
+            if (param != NULL) {
+                if (root_dir[0] != '\0' && root == FALSE) {
+                    printf("Config param error: param '%s' defined two times", CFG_PAR_ROOT_DIR);
+                    return -1;
+                }
+                root = FALSE;
+                res = sscanf(param, CFG_PAR_ROOT_DIR"=%s %s", root_dir, bufcpy);
+                if (res > 0) {
+                    if (res == 2 && !CfgParIsComment(bufcpy)) {
+                        printf("Config param error in line %d. Unknow param: %s", nl, bufcpy);
+                        return -1;
+                    }
+                }
+            }
+            param = strstr(buffer, CFG_SSL_CERT);
+            if (param != NULL) {
+                if (cert[0] != '\0') {
+                    printf("Config param error: param '%s' defined two times", CFG_SSL_CERT);
+                    return -1;
+                }
+                res = sscanf(param, CFG_SSL_CERT"=%s %s", cert, bufcpy);
+                if (res > 0) {
+                    if (res == 2 && !CfgParIsComment(bufcpy)) {
+                        printf("Config param error in line %d. Unknow param: %s", nl, bufcpy);
+                        return -1;
+                    }
+                }
+            }
         }
     }
     fclose(fp);
@@ -648,7 +681,7 @@ static int ReadConfigFile(char *path, dbconf *db_c, char *root_dir, time_t *twpc
         db_c->type = DB_SQLITE;
     }
     else if (strcmp(dbts, DB_T_POSTGRES) == 0) {
-        db_c->type = DB_POSTGRES;
+        db_c->type = DB_POSTGRESQL;
     }
     else {
         printf("Uncknow DB type:%s\n", dbts);
@@ -657,7 +690,7 @@ static int ReadConfigFile(char *path, dbconf *db_c, char *root_dir, time_t *twpc
 
     switch (db_c->type) {
     case DB_MYSQL:
-        printf("For DEMA with MySQL DB contact: xplico@iserm.com");
+        printf("For DEMA with MySQL DB contact: xplico@evolka.it");
         return -1;
         break;
 
@@ -668,8 +701,8 @@ static int ReadConfigFile(char *path, dbconf *db_c, char *root_dir, time_t *twpc
         }        
         break;
 
-    case DB_POSTGRES:
-        printf("For DEMA with POSTGRES DB contact: xplico@iserm.com");
+    case DB_POSTGRESQL:
+        printf("For DEMA with POSTGRES DB contact: xplico@evolka.it");
         return -1;
         break;
     }
@@ -764,7 +797,9 @@ int main(int argc, char *argv[])
     else if (config_file[0] == '\0') {
         if (strcmp(db_type, DB_T_MYSQL) == 0) {
             db_c.type = DB_MYSQL;
-            /* default config file */
+        }
+        else if (strcmp(db_type, DB_T_POSTGRES) == 0) {
+            db_c.type = DB_POSTGRESQL;
         }
         else {
             Usage(argv[0]);
@@ -783,10 +818,10 @@ int main(int argc, char *argv[])
 
     if (root_dir[0] != '\0') {
         /* daemon */
-        ret = daemon(1,1);
+        ret = daemon(1, 0);
 
         /* init db connection */
-        if (DBIntInit(&db_c) == -1) {
+        if (DBIntInit(&db_c) != 0) {
             printf("Error: DB interface\n");
             return -1;
         }

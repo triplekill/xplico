@@ -118,8 +118,15 @@ class ConfigurationsController extends AppController
                            '/opt/xplico/cfg/mfile_install_mysql.cfg',
                            '/opt/xplico/cfg/mpaltalk_install_mysql.cfg',
                            '/opt/xplico/cfg/mwmail_install_mysql.cfg',
-                           '/opt/xplico/cfg/xplico_install_mysql.cfg');
+                           '/opt/xplico/cfg/xplico_install_mysql.cfg',
+                           '/opt/xplico/cfg/mfbc_install_postgres.cfg',
+                           '/opt/xplico/cfg/mfile_install_postgres.cfg',
+                           '/opt/xplico/cfg/mpaltalk_install_postgres.cfg',
+                           '/opt/xplico/cfg/mwmail_install_postgres.cfg',
+                           '/opt/xplico/cfg/xplico_install_postgres.cfg');
             foreach ($files as $cfg) {
+                if (!file_exists($cfg))
+                    continue;
                 $cfg_tmp = '/opt/xplico/cfg/tmp.cfg';
                 $cfgparams = file($cfg);
                 $fh = fopen($cfg_tmp, 'w');
@@ -151,9 +158,16 @@ class ConfigurationsController extends AppController
                        '/opt/xplico/cfg/mfile_install_mysql.cfg',
                        '/opt/xplico/cfg/mpaltalk_install_mysql.cfg',
                        '/opt/xplico/cfg/mwmail_install_mysql.cfg',
-                       '/opt/xplico/cfg/xplico_install_mysql.cfg');
+                       '/opt/xplico/cfg/xplico_install_mysql.cfg',
+                       '/opt/xplico/cfg/mfbc_install_postgres.cfg',
+                       '/opt/xplico/cfg/mfile_install_postgres.cfg',
+                       '/opt/xplico/cfg/mpaltalk_install_postgres.cfg',
+                       '/opt/xplico/cfg/mwmail_install_postgres.cfg',
+                       '/opt/xplico/cfg/xplico_install_postgres.cfg');
         $disp = null;
         foreach ($files as $cfg) {
+            if (!file_exists($cfg))
+                continue;
             $cfg_tmp = '/opt/xplico/cfg/tmp.cfg';
             $cfgparams = file($cfg);
             $fh = fopen($cfg_tmp, 'w');
@@ -193,9 +207,12 @@ class ConfigurationsController extends AppController
     function checksumtogle() {
         $files = array('/opt/xplico/cfg/xplico_cli.cfg',
                        '/opt/xplico/cfg/xplico_install_lite.cfg',
-                       '/opt/xplico/cfg/xplico_install_mysql.cfg');
+                       '/opt/xplico/cfg/xplico_install_mysql.cfg',
+                       '/opt/xplico/cfg/xplico_install_postgres.cfg');
         $checksum = null;
         foreach ($files as $cfg) {
+            if (!file_exists($cfg))
+                continue;
             $cfg_tmp = '/opt/xplico/cfg/tmp.cfg';
             $cfgparams = file($cfg);
             $fh = fopen($cfg_tmp, 'w');
@@ -265,8 +282,11 @@ class ConfigurationsController extends AppController
         if ($name != null) {
             $files = array('/opt/xplico/cfg/xplico_cli.cfg',
                            '/opt/xplico/cfg/xplico_install_lite.cfg',
-                           '/opt/xplico/cfg/xplico_install_mysql.cfg');
+                           '/opt/xplico/cfg/xplico_install_mysql.cfg',
+                           '/opt/xplico/cfg/xplico_install_postgres.cfg');
             foreach ($files as $cfg) {
+                if (!file_exists($cfg))
+                    continue;
                 $cfg_tmp = '/opt/xplico/cfg/tmp.cfg';
                 $cfgparams = file($cfg);
                 $fh = fopen($cfg_tmp, 'w');
@@ -766,6 +786,39 @@ class ConfigurationsController extends AppController
                             }
                         }
                         break;
+
+                    case 'null':
+                        if (strstr($line, 'dis_null.')) {
+                            if (strstr($line, '#MODULE') == FALSE) {
+                                $line = '#'.$line;
+                            }
+                            else {
+                                $line = str_replace('#', '', $line);
+                            }
+                        }
+                        break;
+
+                    case 'chdlc':
+                        if (strstr($line, 'dis_chdlc.')) {
+                            if (strstr($line, '#MODULE') == FALSE) {
+                                $line = '#'.$line;
+                            }
+                            else {
+                                $line = str_replace('#', '', $line);
+                            }
+                        }
+                        break;
+
+                    case 'webymsg':
+                        if (strstr($line, 'dis_webymsg.')) {
+                            if (strstr($line, '#MODULE') == FALSE) {
+                                $line = '#'.$line;
+                            }
+                            else {
+                                $line = str_replace('#', '', $line);
+                            }
+                        }
+                        break;
                     }
                     fwrite($fh, $line);
                 }
@@ -818,7 +871,10 @@ class ConfigurationsController extends AppController
             'udp_grb' => 'Off',
             'ppi' => 'Off',
             'syslog' => 'Off',
-            'prism' => 'Off'
+            'prism' => 'Off',
+            'null' => 'Off',
+            'chdlc' => 'Off',
+            'webymsg' => 'Off'
             );
         $cfg = file('/opt/xplico/cfg/xplico_install_lite.cfg');
         foreach ($cfg as $line) {
@@ -958,6 +1014,15 @@ class ConfigurationsController extends AppController
                     }
                     else if (strstr($line, 'dis_prism.')) {
                         $dissectors['prism'] = 'On';
+                    }
+                    else if (strstr($line, 'dis_null.')) {
+                        $dissectors['null'] = 'On';
+                    }
+                    else if (strstr($line, 'dis_chdlc.')) {
+                        $dissectors['chdlc'] = 'On';
+                    }
+                    else if (strstr($line, 'dis_webymsg.')) {
+                        $dissectors['webymsg'] = 'On';
                     }
                 }
             }

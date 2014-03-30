@@ -29,6 +29,7 @@
 #include <string.h>
 
 #include "proto.h"
+#include "version.h"
 #include "dmemory.h"
 #include "etypes.h"
 #include "ppptypes.h"
@@ -36,6 +37,8 @@
 #include "log.h"
 #include "embedded.h"
 #include "configs.h"
+#include "ipproto.h"
+#include "bsdaftps.h"
 
 #define GTP_MSG_TPDU                0xFF
 
@@ -179,7 +182,7 @@ static packet* IpDissector(packet *pkt)
     ProtSetNxtFrame(frame, pkt->stk);
     pkt->stk = frame;
 
-    /* set attribute */
+    /* set attributes */
     val.uint8 = ip->protocol;
     ProtInsAttr(frame, proto_id, &val);
 #ifdef XPL_X86
@@ -314,6 +317,13 @@ int DissecRegist(const char *file_cfg)
     ProtDep(&dep);
     dep.val.uint16 = DLT_IPV4;
     ProtDep(&dep);
+    
+    /* ipv6 dependence */
+    dep.name = "ipv6";
+    dep.attr = "ipv6.nxt";
+    dep.type = FT_UINT8;
+    dep.val.uint8 = IP_PROTO_IPIP;
+    ProtDep(&dep);
 
     /* vlan dependence */
     dep.name = "vlan";
@@ -336,6 +346,28 @@ int DissecRegist(const char *file_cfg)
     dep.val.uint8 = GTP_MSG_TPDU;
     ProtDep(&dep);
     
+    /* udp dependence */
+    dep.name = "null";
+    dep.attr = "null.family";
+    dep.type = FT_UINT32;
+    dep.val.uint32 = BSD_AF_INET;
+    ProtDep(&dep);
+    
+    dep.attr = "udp.dstport";
+    ProtDep(&dep);
+    
+#if 0
+    /* udp dependence */
+    dep.name = "udp";
+    dep.attr = "udp.srcport";
+    dep.type = FT_UINT16;
+    dep.val.uint16 = 34555;
+    ProtDep(&dep);
+    
+    dep.attr = "udp.dstport";
+    ProtDep(&dep);
+#endif
+    
     /* dissectors registration */
     ProtDissectors(IpDissector, NULL, NULL, NULL);
 
@@ -351,3 +383,4 @@ int DissectInit(void)
     
     return 0;
 }
+

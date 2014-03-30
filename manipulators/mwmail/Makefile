@@ -42,13 +42,13 @@ OBJ = $(SRC:.c=.o)
 DEP = ../core/mmain.c mpei.c analyse.c
 
 # compilation
-LDFLAGS =  -L$(ROOT_DIR) -ldl -lpthread -lz
+LDFLAGS =  -L$(ROOT_DIR) -ldl -lpthread -lz -lssl -lcrypto
 
 # cflags
 CFLAGS += -I./include
 
 # python complier
-PYCMPL = py3compile
+PYCMPL = python3 -m compileall
 
 # verify GeoIP library source code
 ifeq ($(wildcard $(GEOIP_LIB)), $(GEOIP_LIB))
@@ -75,6 +75,7 @@ pth:
 
 pycmpl: $(PYSRC:.py=.pyc)
 	chmod +x *.pyc
+	if [ -d "__pycache__" ]; then rm -rf __pycache__; fi
 
 subdir:
 	@for dir in $(SUBDIRS) ; \
@@ -87,6 +88,7 @@ clean:
 	rm -f $(MANIPULA_NAME) $(ROOT_DIR)/$(MANIPULA_NAME) *.o *.so *~ include/*~ .depend *.expand
 	rm -f $(ROOT_DIR)/wbm_*.pyc $(ROOT_DIR)/wbm_*.py
 	rm -f modules config tmp xdecode
+	rm -rf __pycache__
 
 install:
 	cp $(MANIPULA_NAME) $(INSTALL_DIR)/bin
@@ -102,6 +104,7 @@ mmain.o: ../core/mmain.c
 %.pyc: %.py
 	rm -f $@
 	$(PYCMPL) $< 
+	if [ -d "__pycache__" ]; then mv __pycache__/*.pyc $@; fi
 
 .depend: $(DEP)
 	$(CC) -M $(MCFLAGS) $(DEP) > $@

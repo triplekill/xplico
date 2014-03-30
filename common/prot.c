@@ -5,7 +5,7 @@
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2012 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -27,13 +27,13 @@
 #include <string.h>
 #include <stdio.h>
 #include <limits.h>
+#include <search.h>
 
 #include "configs.h"
 #include "proto.h"
 #include "dmemory.h"
 #include "log.h"
 #include "ftypes.h"
-#include "rule.h"
 #include "fthread.h"
 #include "xplxml.h"
 #include "grp_rule.h"
@@ -42,7 +42,6 @@
 
 /** define */
 #define FLOW_TIMEOUT         1800
-//#define XPL_CHECK_CODE_SORT  1
 
 /* local structures */
 struct dis_arg {
@@ -50,6 +49,11 @@ struct dis_arg {
     int pid;
 };
 
+typedef struct _list_flow list_flow;
+struct _list_flow {
+    int id; /* index of flows */
+    list_flow *next; /* next element */
+};
 
 /** external variables */
 extern prot_desc *prot_tbl;
@@ -58,8 +62,9 @@ extern int prot_tbl_dim;
 
 /** internal variables */
 static time_t fto = FLOW_TIMEOUT;   /* flow timeout */
-static int prot_to_forced = -1;     /* to improve */
-
+static int prot_forced = -1;        /* to improve */
+static time_t gbl_time;
+static list_flow **ftoclose;          /* flow closed by timeout */
 
 static packet* ProtSearchDissec(packet *pkt, int *prot_id);
 
@@ -90,50 +95,87 @@ static inline void ProtUnlock(int prot_id)
 }
 
 
+static void ProtFlowTimeCheck(const void *nodep, const VISIT which, const int depth)
+{
+    flow_d *datap = NULL;
+    time_t ftime, pftime;
+    int pid;
+    list_flow *toclose_new;
+    
+    switch (which) {
+    case preorder:
+        break;
+        
+    case postorder:
+        datap = *(flow_d **)nodep;
+        break;
+        
+    case endorder:
+        break;
+        
+    case leaf:
+        datap = *(flow_d **)nodep;
+        break;
+    }
+    if (datap) {
+        pid = FthreadSelfFlowId();
+        /* only the children of the flow which calls ProtFlowTimeout can be closed */
+        if (datap->pfid == pid && FlowCallSubDis(datap->fid, FALSE) == FALSE) {
+            ftime = FlowTimeQ(datap->fid);
+            if (datap->pfid != -1) {
+                pftime = FlowTimeQ(datap->pfid);
+            }
+            else {
+                pftime = gbl_time;
+            }
+#warning "Improve timeout definition and function!!!!"
+            if (pftime > ftime + fto) {
+                toclose_new = xmalloc(sizeof(list_flow));
+                toclose_new->next = ftoclose[datap->pid];
+                toclose_new->id = datap->fid;
+                ftoclose[datap->pid] = toclose_new;
+            }
+        }
+    }
+}
+
+
 static int ProtFlowTimeout(int id)
 {
-    int elm_chk, i, fnum;
-    flow_d *ftbld;
-    time_t gbl_time, ftime, pftime;
-    int pid, cp;
-
+    int i, j, cp;
+    list_flow *nxt, *tmp;
+    
     gbl_time = FlowGetGblTime();
+    
     ProtLock(id);
+    
     if (prot_tbl[id].tver == FALSE) {
         ProtUnlock(id);
         return 0;
     }
     prot_tbl[id].tver = FALSE; /* only in one place we set tver to TRUE */
-    
-    ftbld = prot_tbl[id].ftbl;
-    elm_chk = 0;
-    fnum = prot_tbl[id].flow_num;
-    pid = FthreadSelfFlowId();
-    for (i=0; i<prot_tbl[id].ftbl_dim && elm_chk<fnum; i++) {
-        if (ftbld[i].fid != -1) {
-            /* only the children of the flow which calls ProtFlowTimeout can be closed */
-            if (ftbld[i].pfid == pid && FlowCallSubDis(ftbld[i].fid, FALSE) == FALSE) {
-                ftime = FlowTimeQ(ftbld[i].fid);
-                if (ftbld[i].pfid != -1) {
-                    pftime = FlowTimeQ(ftbld[i].pfid);
-                }
-                else {
-                    pftime = gbl_time;
-                }
-#warning "Improve timeout definition and function!!!!"
-                if (pftime > ftime + fto) {
-                    FlowClose(ftbld[i].fid);
-                }
-            }
-            elm_chk++;
+
+    for (j=0; j!=PROT_FLOW_TREES_ROOTS; j++) {
+        for (i=0; i!=PROT_FLOW_TREES; i++) {
+            twalk(prot_tbl[id].ftree[j][i], ProtFlowTimeCheck);
         }
     }
+
+    nxt = ftoclose[id];
+    while (nxt != NULL) {
+        FlowClose(nxt->id);
+        tmp = nxt;
+        nxt = nxt->next;
+        xfree(tmp);
+    }
+    ftoclose[id] = NULL;
+    
     ProtUnlock(id);
 
     /* to forced */
-    if (prot_to_forced != -1) {
-        cp = prot_to_forced;
-        prot_to_forced = -1;
+    if (prot_forced != -1) {
+        cp = prot_forced;
+        prot_forced = -1;
         ProtFlowTimeout(cp);
     }
 
@@ -143,173 +185,55 @@ static int ProtFlowTimeout(int id)
 
 int ProtFlowTimeOutForce(int prot_id)
 {
-    prot_to_forced = prot_id;
+    prot_forced = prot_id;
     
     return 0;
 }
 
 
-#ifdef FTBL_SORT
-static void ProtCheckSort(int prot_id)
+static int ProtFlowCompare(const void *pa, const void *pb)
 {
-    int i;
-    
-    for (i=0; i<prot_tbl[prot_id].flow_num-1; i++) {
-        if (prot_tbl[prot_id].ftbl[i].hash > prot_tbl[prot_id].ftbl[i+1].hash) {
-            LogPrintf(LV_OOPS, "Sort error: %i->%lu => %i->%lu",
-                      i, prot_tbl[prot_id].ftbl[i].hash, i+1, prot_tbl[prot_id].ftbl[i+1].hash);
-            exit(-1);
-        }
-        if (prot_tbl[prot_id].ftbl[i].fid == prot_tbl[prot_id].ftbl[i+1].fid) {
-            LogPrintf(LV_OOPS, "Sort error: %i->%lu => %i->%lu",
-                      i, prot_tbl[prot_id].ftbl[i].fid, i+1, prot_tbl[prot_id].ftbl[i+1].fid);
-# if XP_MEM_DEBUG
-            exit(-1);
-# endif
-        }
-    }
+    flow_d *tmp;
+
+    tmp = ((flow_d *)pa);
+    return prot_tbl[tmp->pid].FlowCmp(&((flow_d *)pa)->cmp, &((flow_d *)pb)->cmp);
 }
-#endif
 
 
-static int ProtAddFlow(int prot_id, int flow_id)
+static void *ProtAddFlow(int prot_id, int flow_id)
 {
-    flow_d *new;
-    int i, dim;
+    flow_d *newf;
     const pstack_f *nxt;
-    unsigned long hash;
-#ifdef FTBL_SORT
-    int sup, inf, check, diff;
-#endif
-#if CHECK_SINGLE_RULE
-    unsigned short metric, tmp_m;
-    int j, rl;
-#endif
+    unsigned long hash[2];
+    void *val;
 
     /* stack */
     nxt = FlowStack(flow_id);
     if (nxt == NULL) {
         LogPrintf(LV_ERROR, "Flow without stack!");
-        return -1;
+        return NULL;
     }
+    
+    newf = xmalloc(sizeof(flow_d));
+    newf->fid = flow_id;
+    newf->cmp.stack = nxt;
+    newf->cmp.priv = NULL;
+    newf->pid = prot_id;
+    newf->pfid = ProtParent(nxt);
+    hash[0] = hash[1] = 0;
+    
+    prot_tbl[prot_id].FlowHash(&newf->cmp, hash);
+    hash[0] %= PROT_FLOW_TREES_ROOTS;
+    hash[1] %= PROT_FLOW_TREES;
 
-#if CHECK_SINGLE_RULE
-    /* to find correct rule from many rules */
-    metric = USHRT_MAX;
-    for (j=0; j<prot_tbl[prot_id].rule_num; j++) {
-        tmp_m = RuleStkMetric(&prot_tbl[prot_id].rule[j], nxt);
-        
-        if (tmp_m < metric) {
-            /* new rule */
-            rl = j;
-            metric = tmp_m;
-        }
+    val = tsearch((void *)newf, &prot_tbl[prot_id].ftree[hash[0]][hash[1]], ProtFlowCompare);
+    if (val == NULL) {
+        LogPrintf(LV_FATAL, "Problem in function %s line: %d", __FILE__, __LINE__);
+        exit(-1);
     }
-# ifdef XPL_CHECK_CODE
-    if (metric == USHRT_MAX) {
-        LogPrintf(LV_OOPS, "Bug in function %s line: %d", __FILE__, __LINE__);
-        exit(-1);  
-    }
-# endif
-    hash = RuleStkHash(prot_tbl[prot_id].rule+rl, 1, nxt);
-#else
-    hash = RuleStkHash(prot_tbl[prot_id].rule, prot_tbl[prot_id].rule_num, nxt);
-#endif
-
-    if (prot_tbl[prot_id].ftbl_dim == prot_tbl[prot_id].flow_num) {
-        /* extend table */
-        dim = prot_tbl[prot_id].ftbl_dim + PROT_FLOW_DESC_ADD;
-        new = xrealloc(prot_tbl[prot_id].ftbl, sizeof(flow_d)*dim);
-        if (new == NULL) {
-            LogPrintf(LV_ERROR, "Unable to allocate memory for protocol %s", prot_tbl[prot_id].name);
-            return -1;
-        }
-        for (i=prot_tbl[prot_id].ftbl_dim; i<dim; i++) {
-            new[i].fid = -1;
-            new[i].stack = NULL;
-            new[i].hash = 0;
-            new[i].pfid = -1;
-        }
-        i = prot_tbl[prot_id].ftbl_dim;
-        prot_tbl[prot_id].ftbl = new;
-        prot_tbl[prot_id].ftbl_dim = dim;
-    }
-    else {
-#ifndef FTBL_SORT
-        /* search free descriptor */
-        i = 0;
-        while (prot_tbl[prot_id].ftbl[i].fid != -1) {
-            i++;
-#  ifdef XPL_CHECK_CODE
-            if (i == prot_tbl[prot_id].ftbl_dim) {
-                LogPrintf(LV_OOPS, "Bug in function %s line: %d", __FILE__, __LINE__);
-                return -1;
-            }
-#  endif
-        }
-#endif
-    }
-
-#ifdef FTBL_SORT
-    /* search position */
-    if (prot_tbl[prot_id].flow_num) {
-#  if defined(XPL_CHECK_CODE) && defined(XPL_CHECK_CODE_SORT)
-        ProtCheckSort(prot_id);
-#  endif
-        sup = 0;
-        diff = 0;
-        inf = prot_tbl[prot_id].flow_num - 1;
-        do {
-            if (inf - sup == 1)
-                diff++;
-            check = (sup+inf)>>1;
-#  ifdef XPL_CHECK_CODE
-            if (prot_tbl[prot_id].ftbl[check].fid == -1) {
-                LogPrintf(LV_OOPS, "Bug in function %s line: %d", __FILE__, __LINE__);
-                exit(-1);
-                return -1;
-            }
-#  endif
-            if (prot_tbl[prot_id].ftbl[check].hash >= hash) {
-                inf = check;
-            }
-            else {
-                sup = check;
-            }
-        } while (inf != sup && diff != 2);
-        if (prot_tbl[prot_id].ftbl[inf].hash >= hash) {
-            for (i=prot_tbl[prot_id].flow_num; i>inf; i--) {
-                xmemcpy(prot_tbl[prot_id].ftbl+i, prot_tbl[prot_id].ftbl+(i-1), sizeof(flow_d));
-            }
-            /* insert new element in 'inf'*/
-            i = inf;
-        }
-        else {
-            i = prot_tbl[prot_id].flow_num;
-        }
-    }
-    else
-        i = 0;
-#endif
-
-    prot_tbl[prot_id].ftbl[i].fid = flow_id;
-    prot_tbl[prot_id].ftbl[i].stack = nxt;
-    prot_tbl[prot_id].ftbl[i].hash = hash;
-    prot_tbl[prot_id].ftbl[i].pfid = ProtParent(nxt);
-#if CHECK_SINGLE_RULE
-    /* rule for this flow */
-    prot_tbl[prot_id].ftbl[i].rule_id = rl;
-#endif
-
     prot_tbl[prot_id].flow_num++;
 
-#ifdef FTBL_SORT
-#  if defined(XPL_CHECK_CODE) && defined(XPL_CHECK_CODE_SORT)
-    ProtCheckSort(prot_id);
-#  endif
-#endif
-
-    return i;
+    return val;
 }
 
 
@@ -379,7 +303,7 @@ static void* ProtThreadPkt(void *arg)
 static void* ProtThreadFlow(void *arg)
 {
     int pid, flow_pid;
-    int fid, orig;
+    int fid;
     int thrid;
     packet *pkt;
     FlowDissector  FlowDis;
@@ -387,7 +311,7 @@ static void* ProtThreadFlow(void *arg)
 
     pid = ((struct dis_arg *)arg)->pid;
     flow_pid = pid;
-    orig = fid = ((struct dis_arg *)arg)->fid;
+    fid = ((struct dis_arg *)arg)->fid;
     DMemFree(arg);
     FthreadSync();
 
@@ -426,7 +350,7 @@ static void* ProtThreadFlow(void *arg)
         
     } while (fid != -1 && FlowInElabor(fid) == TRUE && (FlowGrpIsEmpty(fid) == FALSE || FlowPrivGet(fid) != NULL) && sub == TRUE);
 
-    /* check if close */
+    /* check if it is close */
     if (fid != -1) {
         /* check if all flow in the group are closed */
         if (FlowGrpIsEmpty(fid) == FALSE) {
@@ -482,7 +406,7 @@ static int ProtThread(int prot_id, int flow_id)
 }
 
 
-/* it is used only fro search and  lauch thread */
+/* it is used only for search and  lauch thread */
 int ProtSearchHeuDissec(int id, int flow_id)
 {
     int i, ret;
@@ -504,14 +428,16 @@ int ProtSearchHeuDissec(int id, int flow_id)
 
                 ProtRunFlowInc(prot_tbl[id].stbl[i].id);
                 
-                /* create a group */
-                if (prot_tbl[prot_tbl[id].stbl[i].id].grp == TRUE) {
-                    FlowGrpCreate(flow_id);
-                }
+                if (FlowInElabor(flow_id) == FALSE) {
+                    /* create a group */
+                    if (prot_tbl[prot_tbl[id].stbl[i].id].grp == TRUE) {
+                        FlowGrpCreate(flow_id);
+                    }
                 
-                /* launch thread */
-                if (ProtThread(prot_tbl[id].stbl[i].id, flow_id) != 0) {
-                    LogPrintf(LV_ERROR, "Unable to start thread (%d)", FthreadRunning());
+                    /* launch thread */
+                    if (ProtThread(prot_tbl[id].stbl[i].id, flow_id) != 0) {
+                        LogPrintf(LV_ERROR, "Unable to start thread (%d)", FthreadRunning());
+                    }
                 }
                 ret = 0;
                 break;
@@ -527,24 +453,14 @@ int ProtSearchHeuDissec(int id, int flow_id)
 static packet* ProtSearchDissec(packet *pkt, int *prot_id)
 {
     volatile int id = *prot_id;
-    int i, j, ret, elm_chk;
-    flow_d *ftbld;
-    int flow_id, flow_par, flow_par_c, gpflow_id;
-    pstack_f *flame_stk;
-    int flowd_id;
+    int i;
+    int flow_id, gpflow_id;
     bool create, link;
-    int flow_num;
-    int elm_start, elm_stop;
     int prot;
     prot_rule *grule, *pre_rule;
-#ifdef FTBL_SORT
-    unsigned long hash;
-    int sup, inf, check, diff;
-#endif
-#if CHECK_SINGLE_RULE
-    unsigned short metric, tmp_m;
-    int rl;
-#endif
+    unsigned long hash[2];
+    flow_d **flowd_node;
+    flow_d fkey;
 
 #ifdef XPL_CHECK_CODE
     if (pkt == NULL) {
@@ -561,7 +477,7 @@ static packet* ProtSearchDissec(packet *pkt, int *prot_id)
     *prot_id = -1;
     if (prot_tbl[id].flow == FALSE) {
         /* packet dissector */
-        for (i=0; i<prot_tbl[id].stbl_dim; i++) {
+        for (i=0; i!=prot_tbl[id].stbl_dim; i++) {
             if (FTCmp(&(pkt->stk->attr[prot_tbl[id].stbl[i].sfpaid]),
                       &(prot_tbl[id].stbl[i].dep->val), prot_tbl[id].stbl[i].dep->type,
                       prot_tbl[id].stbl[i].dep->op, &(prot_tbl[id].stbl[i].dep->opd)) == 0) {
@@ -576,179 +492,87 @@ static packet* ProtSearchDissec(packet *pkt, int *prot_id)
         /* search flow if it exist that match prtocol rule */
         /* actual flow */
         pkt->stk->flow = TRUE;
-        flame_stk = pkt->stk->pfp;
-        flow_par = -1;
-        while (flame_stk != NULL && flame_stk->flow == FALSE) {
-            flame_stk = flame_stk->pfp;
-        }
-        if (flame_stk != NULL)
-            flow_par = flame_stk->flow_id; /* to improve at group flow */
         flow_id = -1;
-        flowd_id = -1;
-        elm_chk = 0;
+        flowd_node = NULL;
 
         ProtLock(id);
 
-        ftbld = prot_tbl[id].ftbl;
-        flow_num = prot_tbl[id].flow_num; /* SubDis can close a flow */
         create = TRUE;
-        prot_tbl[id].flwd_del = -1;
+        prot_tbl[id].node_del = NULL;
+        fkey.cmp.stack = pkt->stk;
+        fkey.cmp.priv = NULL;
+        fkey.pid = id;
+        fkey.fid = -1;
+        fkey.pfid = ProtParent(pkt->stk);
+        hash[0] = hash[1] = 0;
+        
+        prot_tbl[id].FlowHash(&fkey.cmp, hash);
+        hash[0] %= PROT_FLOW_TREES_ROOTS;
+        hash[1] %= PROT_FLOW_TREES;
 
-#ifdef FTBL_SORT
-        if (prot_tbl[id].rule_sort && flow_num != 0) {
-            /* check all elements */
-#  if CHECK_SINGLE_RULE
-            /* to find correct rule from many rules */
-            metric = USHRT_MAX;
-            for (j=0; j<prot_tbl[id].rule_num; j++) {
-                tmp_m = RuleStkMetric(&prot_tbl[id].rule[j], pkt->stk);
-                
-                if (tmp_m < metric) {
-                    /* new rule */
-                    rl = j;
-                    metric = tmp_m;
-                }
-            }
-            hash = RuleStkHash(prot_tbl[id].rule+rl, 1, pkt->stk);
-#  else
-            hash = RuleStkHash(prot_tbl[id].rule, prot_tbl[id].rule_num, pkt->stk);
-#  endif
-            sup = 0;
-            diff = 0;
-            inf = prot_tbl[id].flow_num - 1;
-            do {
-                if (inf - sup == 1)
-                    diff++;
-                check = (sup+inf)>>1;
+        flowd_node = tfind((void *)&fkey, &prot_tbl[id].ftree[hash[0]][hash[1]], ProtFlowCompare);
+        
+        prot_tbl[id].FlowCmpFree(&fkey.cmp);
+        
+        if (flowd_node != NULL) {
+            flow_id = (*flowd_node)->fid;
+            create = FALSE;
+            pkt->stk->flow_id = flow_id;
+            if (prot_tbl[id].SubDis != NULL) {
 #ifdef XPL_CHECK_CODE
-                if (prot_tbl[id].ftbl[check].fid == -1) {
-                    LogPrintf(LV_OOPS, "Bug in function %s line: %d", __FILE__, __LINE__);
-                    exit(-1);
-                    return NULL;
-                }
+                flow_d *node_check = *flowd_node;
 #endif
-                if (prot_tbl[id].ftbl[check].hash >= hash) {
-                    inf = check;
-                }
-                else {
-                    sup = check;
-                }
-            } while (inf != sup && diff != 2);
-
-            while (sup != 0 && prot_tbl[id].ftbl[sup].hash == hash)
-                sup--;
-            elm_start = sup;
-            while (inf != prot_tbl[id].ftbl_dim && prot_tbl[id].ftbl[inf].hash == hash)
-                inf++;
-            elm_stop = inf;
-        }
-        else {
-            /* check all elements */
-            elm_start = 0;
-            elm_stop = prot_tbl[id].ftbl_dim;
-        }
-#else
-        elm_start = 0;
-        elm_stop = prot_tbl[id].ftbl_dim;
-#endif
-        for (i=elm_start; i<elm_stop && elm_chk<flow_num; i++) {
-            if (ftbld[i].fid != -1) {
-                if (FlowIsClose(ftbld[i].fid) == FALSE) {
-                    ret = -1;
-                    /* check if flows have same parent flow */
-                    flame_stk = ftbld[i].stack->pfp;
-                    flow_par_c = -1;
-                    while (flame_stk != NULL && flame_stk->flow == FALSE) {
-                        flame_stk = flame_stk->pfp;
+                FlowCallSubDis(flow_id, TRUE); /* to block timeout */
+                prot_tbl[id].SubDis(flow_id, pkt);
+                
+                /* FlowClose can be used in SubDis and then call ProtFlushFlow */
+                if (prot_tbl[id].node_del != NULL) {
+#ifdef XPL_CHECK_CODE
+                    if (node_check != prot_tbl[id].node_del) {
+                        LogPrintf(LV_OOPS, "Delete: flow descriptor error (a).");
+                        extern unsigned long crash_pkt_cnt;
+                        LogPrintf(LV_FATAL, "Last packet num: %lu", crash_pkt_cnt);
+                        printf("\nLast packet num: %lu\n", crash_pkt_cnt);
+                        exit(-1);
                     }
-                    if (flame_stk != NULL)
-                        flow_par_c = flame_stk->flow_id; /* to improve at group flow */
-                    if (flow_par_c == flow_par) {
-                        /* check rule */
-#if CHECK_SINGLE_RULE
-                        ret = RuleCheck(&prot_tbl[id].rule[ftbld[i].rule_id], ftbld[i].stack, pkt->stk);
-#else
-                        j = 0;
-                        while (ret == -1 && j<prot_tbl[id].rule_num) {
-                            ret = RuleCheck(&prot_tbl[id].rule[j++], ftbld[i].stack, pkt->stk);
-                        }
 #endif
-                    }
-                    if (ret == 1) {
-                        flowd_id = i;
-                        flow_id = ftbld[i].fid;
-                        create = FALSE;
-                        pkt->stk->flow_id = flow_id;
-                        if (prot_tbl[id].SubDis != NULL) {
-                            FlowCallSubDis(flow_id, TRUE); /* to block timeout */
-                            prot_tbl[id].SubDis(flow_id, pkt);
-                            /* FlowClose can be used in SubDis and then call ProtFlushFlow */
-#ifdef FTBL_SORT
-                            if (prot_tbl[id].flwd_del != -1) {
-#  ifdef XPL_CHECK_CODE
-                                if (flowd_id != prot_tbl[id].flwd_del) {
-                                    LogPrintf(LV_OOPS, "Delete: flow descriptor error (a).");
-                                    extern unsigned long crash_pkt_cnt;
-                                    LogPrintf(LV_FATAL, "Last packet num: %lu", crash_pkt_cnt);
-                                    printf("\nLast packet num: %lu\n", crash_pkt_cnt);
-                                    exit(-1);
-                                }
-#  endif
-                                flow_id = -1;
-                                flowd_id = -1;
-                            }
-                            
-#else
-                            if (ftbld[flowd_id].fid == -1) {
-                                flow_id = -1;
-                                flowd_id = -1;
-                            }
-#endif
-                        }
-                        else {
-                            FlowPutPkt(flow_id, pkt);
-                        }
-                        pkt = NULL;
-                        break;
-                    }
+                    flow_id = -1;
+                    flowd_node = NULL;
                 }
-                elm_chk++;
             }
-#ifdef FTBL_SORT
             else {
-                LogPrintf(LV_OOPS, "Flow table error");
-                exit(-1);
+                FlowPutPkt(flow_id, pkt);
             }
-#endif
+            pkt = NULL;
         }
+        
         if (create == TRUE) {
             /* create new flow */
             flow_id = FlowCreate(pkt->stk);
             if (flow_id != -1) {
                 /* flow descriptor */
                 pkt->stk->flow_id = flow_id;
-                flowd_id = ProtAddFlow(id, flow_id);
-                if (flowd_id != -1) {
+                flowd_node = ProtAddFlow(id, flow_id);
+                if (flowd_node != NULL) {
+#ifdef XPL_CHECK_CODE
+                    flow_d *node_check = *flowd_node;
+#endif
                     if (prot_tbl[id].SubDis != NULL) {
                         prot_tbl[id].SubDis(flow_id, pkt);
                         /* FlowClose can be used in SubDis and theme call ProtFlushFlow */
-                        
-#ifdef FTBL_SORT
-                        if (prot_tbl[id].flwd_del != -1) {
-#  ifdef XPL_CHECK_CODE
-                            if (flowd_id != prot_tbl[id].flwd_del) {
+                        if (prot_tbl[id].node_del != NULL) {
+#ifdef XPL_CHECK_CODE
+                            if (node_check != prot_tbl[id].node_del) {
                                 LogPrintf(LV_OOPS, "Delete: flow descriptor error (b).");
                                 extern unsigned long crash_pkt_cnt;
                                 LogPrintf(LV_FATAL, "Last packet num: %lu", crash_pkt_cnt);
                                 printf("\nLast packet num: %lu\n", crash_pkt_cnt);
                                 exit(-1);
                             }
-#  endif
+#endif
+                            flowd_node = NULL;
                             flow_id = -1;
                         }
-#else
-                        flow_id = prot_tbl[id].ftbl[flowd_id].fid; /* if SubDis close the flow */
-#endif
                     }
                     else {
                         FlowPutPkt(flow_id, pkt);
@@ -769,20 +593,6 @@ static packet* ProtSearchDissec(packet *pkt, int *prot_id)
         }
         /* flow running */
         if (flow_id != -1) {
-            ftbld = prot_tbl[id].ftbl;
-#ifdef XPL_CHECK_CODE
-            if (flowd_id == -1) {
-                LogPrintf(LV_OOPS, "Flow descriptor don't exist.");
-                ProtStackFrmDisp(FlowStack(flow_id), TRUE);
-                exit(-1);
-            }
-            if (flow_id != ftbld[flowd_id].fid) {
-                LogPrintf(LV_OOPS, "Flow descriptor 'differ' from flow ID. (%d: %d, %d->%d) ",
-                          id, flow_id,  flowd_id, ftbld[flowd_id].fid);
-                ProtStackFrmDisp(FlowStack(flow_id), TRUE);
-                exit(-1);
-            }
-#endif
             if (FlowInElabor(flow_id) == FALSE) {
                 create = FALSE;
                 /* search inside protocol flow (group) waiting flows */
@@ -791,10 +601,10 @@ static packet* ProtSearchDissec(packet *pkt, int *prot_id)
                 grule = prot_tbl[id].grule;
                 while (grule != NULL && grule->verified == FALSE) {
                     link = FALSE;
-                    if (GrpRuleCheck(&grule->rule, ftbld[flowd_id].stack) == TRUE) {
+                    if (GrpRuleCheck(&grule->rule, (*flowd_node)->cmp.stack) == TRUE) {
                         gpflow_id = GrpRuleFlowId(grule->id);
                         /* the flows must have the same parent flow */
-                        if (ftbld[flowd_id].pfid == ProtParent(FlowStack(gpflow_id))) {
+                        if ((*flowd_node)->pfid == ProtParent(FlowStack(gpflow_id))) {
                             /* todo: verify packet with specific function */
 #warning "To be improved"
                             link = TRUE;
@@ -857,7 +667,7 @@ static packet* ProtSearchDissec(packet *pkt, int *prot_id)
                     pktnum = FlowPktNum(flow_id);
                     for (i=0; i!=prot_tbl[id].stbl_dim; i++) {
                         if (prot_tbl[id].stbl[i].dep != NULL && prot_tbl[id].stbl[i].dep->pktlim >= pktnum &&
-                            FTCmp(&(ftbld[flowd_id].stack->attr[prot_tbl[id].stbl[i].sfpaid]), 
+                            FTCmp(&((*flowd_node)->cmp.stack->attr[prot_tbl[id].stbl[i].sfpaid]),
                                   &(prot_tbl[id].stbl[i].dep->val), prot_tbl[id].stbl[i].dep->type,
                                   prot_tbl[id].stbl[i].dep->op, &(prot_tbl[id].stbl[i].dep->opd)) == 0) {
                             /* if exist flow check function */
@@ -873,15 +683,16 @@ static packet* ProtSearchDissec(packet *pkt, int *prot_id)
 
                                 ProtRunFlowInc(prot_tbl[id].stbl[i].id);
                                 
-                                /* create a group */
-                                if (prot_tbl[prot_tbl[id].stbl[i].id].grp == TRUE) {
-                                    FlowGrpCreate(flow_id);
-                                }
+                                if (FlowInElabor(flow_id) == FALSE) {
+                                    /* create a group */
+                                    if (prot_tbl[prot_tbl[id].stbl[i].id].grp == TRUE) {
+                                        FlowGrpCreate(flow_id);
+                                    }
 
-                                /* launch thread */
-                                if (ProtThread(prot_tbl[id].stbl[i].id, flow_id) != 0) {
-                                    LogPrintf(LV_ERROR, "Unable to start thread (%d)", FthreadRunning());
-                                    
+                                    /* launch thread */
+                                    if (ProtThread(prot_tbl[id].stbl[i].id, flow_id) != 0) {
+                                        LogPrintf(LV_ERROR, "Unable to start thread (%d)", FthreadRunning());
+                                    }
                                 }
                                 break;
                             }
@@ -1010,49 +821,41 @@ bool ProtIsNode(int prot_id)
 
 int ProtFlushFlow(int prot_id, int flow_id)
 {
-    int i, j, ret;
+    int ret;
+    flow_d **flowd_node;
+    flow_d fkey;
+    unsigned long hash[2];
 
     ProtLock(prot_id);
-    /* check flow descriptor */
-    for (i=0, j=0; i<prot_tbl[prot_id].ftbl_dim && j<prot_tbl[prot_id].flow_num ; i++) {
-        if (prot_tbl[prot_id].ftbl[i].fid != -1) {
-            if (prot_tbl[prot_id].ftbl[i].fid == flow_id)
-                break;
-            j++;
+    ret = -1;
+    fkey.cmp.stack = FlowStack(flow_id);
+    fkey.cmp.priv = NULL;
+    fkey.pid = prot_id;
+    if (fkey.cmp.stack != NULL) {
+        hash[0] = hash[1] = 0;
+        prot_tbl[prot_id].FlowHash(&fkey.cmp, hash);
+        hash[0] %= PROT_FLOW_TREES_ROOTS;
+        hash[1] %= PROT_FLOW_TREES;
+            
+        flowd_node = tfind((void *)&fkey, &prot_tbl[prot_id].ftree[hash[0]][hash[1]], ProtFlowCompare);
+        if (flowd_node != NULL) {
+            if (prot_tbl[prot_id].SubDis != NULL)
+                prot_tbl[prot_id].SubDis(flow_id, NULL);
+            
+            /* flush is executed at the close of flow then we remove flow descritpor */
+            prot_tbl[prot_id].flow_num--;
+            prot_tbl[prot_id].node_del = *flowd_node;
+            tdelete((void *)&fkey, &prot_tbl[prot_id].ftree[hash[0]][hash[1]], ProtFlowCompare);
+            
+            prot_tbl[prot_id].FlowCmpFree(&prot_tbl[prot_id].node_del->cmp);
+            xfree(prot_tbl[prot_id].node_del);
+            ret = 0;
         }
+        prot_tbl[prot_id].FlowCmpFree(&fkey.cmp);
     }
-    
-    if (j != prot_tbl[prot_id].flow_num) {
-        ret = 0;
-        if (prot_tbl[prot_id].SubDis != NULL)
-            prot_tbl[prot_id].SubDis(flow_id, NULL);
-
-        /* flush is executed at the close of flow then we remove flow descritpor */
-#ifdef FTBL_SORT
-        prot_tbl[prot_id].flow_num--;
-        xmemcpy(&(prot_tbl[prot_id].ftbl[i]), &(prot_tbl[prot_id].ftbl[i+1]),
-                sizeof(flow_d)*(prot_tbl[prot_id].flow_num - i));
-
-        prot_tbl[prot_id].flwd_del = i;
-        i = prot_tbl[prot_id].flow_num;
-        prot_tbl[prot_id].ftbl[i].fid = -1;
-        prot_tbl[prot_id].ftbl[i].stack = NULL;
-        prot_tbl[prot_id].ftbl[i].hash = 0;
-        prot_tbl[prot_id].ftbl[i].pfid = -1;
-#  if defined(XPL_CHECK_CODE) && defined(XPL_CHECK_CODE_SORT)
-        ProtCheckSort(prot_id);
-#  endif
-#else
-        prot_tbl[prot_id].ftbl[i].fid = -1;
-        prot_tbl[prot_id].ftbl[i].stack = NULL;
-        prot_tbl[prot_id].ftbl[i].hash = 0;
-        prot_tbl[prot_id].ftbl[i].pfid = -1;
-        prot_tbl[prot_id].flow_num--;
-#endif
-    }
-    else {
-        LogPrintf(LV_ERROR, "Flow %s is not in protocol %s", FlowName(flow_id), prot_tbl[prot_id].name);
-        ret = -1;
+    if (ret == -1) {
+        LogPrintf(LV_FATAL, "Flow %s is not in protocol tree %s", FlowName(flow_id), prot_tbl[prot_id].name);
+        exit(-1);
     }    
 
     ProtUnlock(prot_id);
@@ -1067,7 +870,7 @@ int ProtOpenFlow(void)
 
     /* it is not atomic! */
     res = 0;
-    for (i=0; i<prot_tbl_dim; i++) {
+    for (i=0; i!=prot_tbl_dim; i++) {
         res += prot_tbl[i].flow_num;
     }
 
@@ -1080,7 +883,7 @@ int ProtId(char *name)
     int i;
 
     /* search protocol */
-    for (i=0; i<prot_tbl_dim; i++) {
+    for (i=0; i!=prot_tbl_dim; i++) {
         if (strcmp(name, prot_tbl[i].name) == 0)
             break;
     }
@@ -1432,12 +1235,11 @@ char *ProtStackFrmXML(const pstack_f *frame)
 char *ProtStackFrmFilter(const pstack_f *frame)
 {
     char *filter_buf;
-    int dim, len, i, j;
+    int dim, len, j;
     const pstack_f *next;
     char *buff;
     bool add;
 
-    i = 0;
     dim = 4096;
     next = frame;
     len = 0;
@@ -1605,58 +1407,40 @@ int ProtGrpRuleRm(int prot_id, int rule_id)
 
 int ProtStackSearchNode(const pstack_f *stk)
 {
-    int i, j, p_id;
-    int elm_chk;
-    flow_d *ftbld;
-    pstack_f *flame_stk;
-    int flow_id, flow_par, flow_par_c;
-    int ret;
+    int p_id;
+    int flow_id;
+    unsigned long hash[2];
+    flow_d **flowd_node;
+    flow_d fkey;
 
-    if (stk == NULL && stk->flow == FALSE)
+    if (stk == NULL || stk->flow == FALSE)
         return -1;
 
-    /* node of flow parent of this stack */
-    flame_stk = stk->pfp;
-    flow_par = -1;
-    while (flame_stk != NULL && flame_stk->flow == FALSE) {
-        flame_stk = flame_stk->pfp;
-    }
-    if (flame_stk != NULL)
-        flow_par = flame_stk->flow_id;
-
     p_id = stk->pid;
-    elm_chk = 0;
     flow_id = -1;
+    fkey.cmp.stack = stk;
+    fkey.cmp.priv = NULL;
+    fkey.pid = p_id;
+    hash[0] = hash[1] = 0;
+    
     ProtLock(p_id);
-    ftbld = prot_tbl[p_id].ftbl;
-    for (i=0; i<prot_tbl[p_id].ftbl_dim && elm_chk<prot_tbl[p_id].flow_num; i++) {
-        if (ftbld[i].fid != -1) {
-            if (FlowIsClose(ftbld[i].fid) == FALSE && FlowInElabor(ftbld[i].fid) == FALSE) {
-                /* check if flows have same parent flow */
-                flame_stk = ftbld[i].stack->pfp;
-                flow_par_c = -1;
-                while (flame_stk != NULL && flame_stk->flow == FALSE) {
-                    flame_stk = flame_stk->pfp;
-                }
-                if (flame_stk != NULL)
-                    flow_par_c = flame_stk->flow_id;
-                if (flow_par_c == flow_par) {
-                    /* check rule */
-                    ret = -1;
-                    j = 0;
-                    while (ret == -1 && j<prot_tbl[p_id].rule_num) {
-                        ret = RuleCheck(&prot_tbl[p_id].rule[j++], ftbld[i].stack, stk);
-                    }
-                    if (ret == 1) {
-                        flow_id = ftbld[i].fid;
-                        break;
-                    }
-                }
-            }
-            elm_chk++;
-        }
+    
+    prot_tbl[p_id].FlowHash(&fkey.cmp, hash);
+    hash[0] %= PROT_FLOW_TREES_ROOTS;
+    hash[1] %= PROT_FLOW_TREES;
+            
+    flowd_node = tfind((void *)&fkey, &prot_tbl[p_id].ftree[hash[0]][hash[1]], ProtFlowCompare);
+    
+    if (flowd_node != NULL)
+        flow_id = (*flowd_node)->fid;
+
+    if (flow_id != -1) {
+        if (FlowIsClose(flow_id) == TRUE || FlowInElabor(flow_id) == TRUE)
+            flow_id = -1;
     }
+
     ProtUnlock(p_id);
+    prot_tbl[p_id].FlowCmpFree(&fkey.cmp);
 
     return flow_id;
 }
@@ -1730,20 +1514,33 @@ unsigned long ProtTotFlow(int prot_id)
 }
 
 
-int ProtStatus(void)
+int ProtStatus(FILE *fp)
 {
     int i;
 
-    for (i=0; i<prot_tbl_dim; i++) {
+    for (i=0; i!=prot_tbl_dim; i++) {
+        if (fp == NULL) {
 #ifdef XPL_PEDANTIC_STATISTICS
-        printf("%s: running: %i/%lu, subflow:%i/%i, tot pkt:%lu\n",
-               prot_tbl[i].name, prot_tbl[i].flow_run, prot_tbl[i].flow_tot,
-               prot_tbl[i].flow_num, prot_tbl[i].ftbl_dim, prot_tbl[i].pkt_tot);
+            printf("%s: running: %i/%lu, subflow:%i, tot pkt:%lu\n",
+                prot_tbl[i].name, prot_tbl[i].flow_run, prot_tbl[i].flow_tot,
+                prot_tbl[i].flow_num, prot_tbl[i].pkt_tot);
 #else
-        printf("%s: running: %i/%lu, subflow:%i/%i\n",
-               prot_tbl[i].name, prot_tbl[i].flow_run, prot_tbl[i].flow_tot,
-               prot_tbl[i].flow_num, prot_tbl[i].ftbl_dim);
+            printf("%s: running: %i/%lu, subflow:%i/\n",
+                prot_tbl[i].name, prot_tbl[i].flow_run, prot_tbl[i].flow_tot,
+                prot_tbl[i].flow_num);
 #endif
+        }
+        else {
+#ifdef XPL_PEDANTIC_STATISTICS
+            fprintf(fp, "%s: running: %i/%lu, subflow:%i, tot pkt:%lu\n",
+                prot_tbl[i].name, prot_tbl[i].flow_run, prot_tbl[i].flow_tot,
+                prot_tbl[i].flow_num, prot_tbl[i].pkt_tot);
+#else
+            fprintf(fp, "%s: running: %i/%lu, subflow:%i/\n",
+                prot_tbl[i].name, prot_tbl[i].flow_run, prot_tbl[i].flow_tot,
+                prot_tbl[i].flow_num);
+#endif
+        }
     }
     
     return 0;
@@ -1781,12 +1578,16 @@ int ProtInit(const char *file_cfg)
     char buffer[CFG_LINE_MAX_SIZE];
     char bufcpy[CFG_LINE_MAX_SIZE];
     char *param;
-    int res, nl;
+    int res, nl, i;
     time_t to;
 
     /* default values */
     fto = FLOW_TIMEOUT;
-    prot_to_forced = -1;
+    prot_forced = -1;
+    ftoclose = xmalloc(sizeof(list_flow *)*prot_tbl_dim);
+    for (i = 0; i!= prot_tbl_dim; i++) {
+        ftoclose[i] = NULL;
+    }
 
     /* read config file params */
     if (file_cfg == NULL) {

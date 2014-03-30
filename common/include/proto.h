@@ -4,7 +4,7 @@
  *
  * Xplico - Internet Traffic Decoder
  * By Gianluca Costa <g.costa@xplico.org>
- * Copyright 2007-2011 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
+ * Copyright 2007-2013 Gianluca Costa & Andrea de Franceschi. Web: www.xplico.org
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -29,18 +29,19 @@
 #include <dlfcn.h>
 #include <time.h>
 #include <regex.h>
+#include <stdio.h>
 
 #include "istypes.h"
 #include "ftypes.h"
 #include "flow.h"
 #include "packet.h"
 #include "dis_mod.h"
-#include "rule.h"
 #include "grp_rule.h"
 
 
-#define PROT_FLOW_DESC_ADD     50
-#define PROT_FLOW_CHECK_FLOW   15  /* sec from next tver (see below) */
+#define PROT_FLOW_CHECK_FLOW   20  /* sec from next tver (see below) */
+#define PROT_FLOW_TREES        512
+#define PROT_FLOW_TREES_ROOTS  126
 
 /** protocol check function */
 typedef bool (*ProtVerify)(int flow_id);
@@ -57,6 +58,12 @@ typedef int (*GroupFlow)(int flow_id, int *flow_list, int num);
 /** protocol sub dissector, only for protocol node */
 typedef void (*FlowSubDissector)(int flow_id, packet *pkt);
 
+/** protocol flow hash, only for protocol node */
+typedef int (*FlowCmpFreeFun)(cmpflow *fd);
+typedef int (*FlowHashFun)(cmpflow *fd, unsigned long *hashs);
+
+/** protocol flow compare functions, only for protocol node */
+typedef int (*FlowCmpFun)(const cmpflow *fd_a, const cmpflow *fd_b);
 
 /** information describing a protocol/flow attribute protocol */
 typedef struct _proto_info proto_info;
@@ -149,9 +156,9 @@ struct _proto_desc {
     volatile unsigned long flow_tot;   /**< number of total flow/thread */
 
     /* flow generation */
-    flow_rule        *rule;    /**< rule to identify flow, a rule for any possible stack protocol */
-    int              rule_num; /**< number of rules */
-    bool             rule_sort;/**< if is possible to sort flow with hash&rules */
+    FlowHashFun  FlowHash;     /**< the hash of flow */
+    FlowCmpFun   FlowCmp;      /**< compare two flows */
+    FlowCmpFreeFun FlowCmpFree;/**< free data used to compare */
     FlowSubDissector SubDis;   /**< subdissector for elaborate flow stream before insert new packets in the flow */
 
     /* flow aggregation in group */
@@ -161,10 +168,9 @@ struct _proto_desc {
     short rl_nesting;          /**< lock nesting */
 
     /* flow control for protocol node protocol (flow == TRUE) */
-    flow_d         *ftbl;      /**< flow table descriptor, all flows of this protocol */
+    void           *ftree[PROT_FLOW_TREES_ROOTS][PROT_FLOW_TREES];     /**< flow tree descriptor, all flows of this protocol */
+    flow_d         *node_del;                  /**< last node deleted */
     volatile int   flow_num;   /**< number of flow for this protocol node */
-    int            ftbl_dim;   /**< number of element of ftbl */
-    int            flwd_del;   /**< last flow_d deleted */
     pthread_mutex_t mux;       /**< mutex for access flow table descriptor */
     volatile pthread_t ptrd_lock;      /**< ptread that lock access */
     short          nesting;    /**< lock nesting */
@@ -173,6 +179,7 @@ struct _proto_desc {
     /* module function and handler */
     void *handle;              /**< module handler */
     DisRegist DissecRegist;    /**< dissector function register */
+    DisMultiRegist DissecMultiRegist;   /**< dissector function for multiple register */
     DisInit DissectInit;       /**< dissector function inizialization */
     DisLog DissectLog;         /**< dissector function log inizialization */
 #ifdef XPL_PEDANTIC_STATISTICS
@@ -240,7 +247,7 @@ int ProtRunFlowInc(int prot_id);
 int ProtRunFlowDec(int prot_id);
 int ProtRunningFlow(int prot_id);
 unsigned long ProtTotFlow(int prot_id);
-int ProtStatus(void);
+int ProtStatus(FILE *fp);
 unsigned short ProtLogMask(int prot_id);
 const char *ProtLogName(int prot_id);
 #ifdef XPL_PEDANTIC_STATISTICS
