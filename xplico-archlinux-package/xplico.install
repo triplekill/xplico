@@ -35,7 +35,7 @@ else
         echo 'date.timezone = US/Eastern ; XPLICO' >> $PHPINI
 fi
 
-echo 'Don't forget to enable sqlite extension $PHPINI'
+echo "Don't forget to enable sqlite extension $PHPINI"
 
 chmod 777 -R $XPLICO_BASE/xi/app/tmp/cache
 
