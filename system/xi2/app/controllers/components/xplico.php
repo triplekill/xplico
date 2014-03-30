@@ -163,7 +163,7 @@ class XplicoComponent extends Object
 
     //Yes, i know, this execs on php will send me to Hell.
     function getDemaVersion() {
-        return exec('/opt/xplico/bin/dema -v  |  /usr/bin/cut -b 6,7,8,9,10');
+        return exec('/opt/xplico/bin/dema -v  |  cut -b 6,7,8,9,10');
     }
 
     function getXplicoVersion() {
@@ -192,7 +192,7 @@ class XplicoComponent extends Object
     }
 
     function gettcpdumpVersion() {
-        return exec('/usr/bin/tcpdump -V 2> /tmp/output.tcpdump.txt ; /bin/cat /tmp/output.tcpdump.txt  | /bin/grep tcpdump | /bin/grep version | /usr/bin/cut -b 17,18,19,20,21 ; /bin/rm output.tcpdump.txt ');
+        return exec('/usr/bin/tcpdump -V 2> /tmp/output.tcpdump.txt ; cat /tmp/output.tcpdump.txt  | grep tcpdump | grep version | cut -b 17,18,19,20,21 ; rm output.tcpdump.txt ');
     }
     
     function getTsharkVersion() {
@@ -200,9 +200,9 @@ class XplicoComponent extends Object
     }
 
     function getlameVersion() {
-        $ver = exec('/usr/bin/lame -V 2> /tmp/output.lame.txt ; /bin/cat /tmp/output.lame.txt  | /bin/grep version | /usr/bin/cut -b 21,22,23,24,25,26,27 ; /bin/rm output.lame.txt ');
+        $ver = exec('/usr/bin/lame -V 2> /tmp/output.lame.txt ; cat /tmp/output.lame.txt  | grep version | cut -b 21,22,23,24,25,26,27 ; rm output.lame.txt ');
         if (empty($ver))
-            $ver = exec('lame -V 2> /tmp/output.lame.txt ; /bin/cat /tmp/output.lame.txt  | /bin/grep version | /usr/bin/cut -b 21,22,23,24,25,26,27 ; /bin/rm output.lame.txt ');
+            $ver = exec('lame -V 2> /tmp/output.lame.txt ; cat /tmp/output.lame.txt  | grep version | cut -b 21,22,23,24,25,26,27 ; rm output.lame.txt ');
         return $ver;
     }
 
@@ -219,14 +219,14 @@ class XplicoComponent extends Object
     }
     
     function getKernelVersion() {
-	return exec('/bin/cat /proc/version | /usr/bin/cut -b 15,16,17,18,19,20,21,22,23');	}
+	return exec('cat /proc/version | cut -b 15,16,17,18,19,20,21,22,23');	}
 
     function getLibPCAPVersion() {
-	return exec ('/usr/bin/tcpdump -V 2> /tmp/output.libpcap.txt ; /bin/cat /tmp/output.libpcap.txt  | /bin/grep libpcap | /bin/grep version | /usr/bin/cut -b 17,18,19,20,21 ; /bin/rm output.libpcap.txt ');   	}
+	return exec ('/usr/bin/tcpdump -V 2> /tmp/output.libpcap.txt ; cat /tmp/output.libpcap.txt  | grep libpcap | grep version | cut -b 17,18,19,20,21 ; rm output.libpcap.txt ');   	}
 
     function getxplicoAlertsVersion() {
 	if (file_exists('/opt/xplico/bin/xplicoAlerts')) {
-		//return exec ('/usr/sbin/tcpdump -V 2> /tmp/output.libpcap.txt ; /bin/cat /tmp/output.libpcap.txt  | /bin/grep libpcap | /bin/grep version | /usr/bin/cut -b 17,18,19,20,21 ; /bin/rm output.libpcap.txt ');   	
+		//return exec ('/usr/sbin/tcpdump -V 2> /tmp/output.libpcap.txt ; cat /tmp/output.libpcap.txt  | grep libpcap | grep version | cut -b 17,18,19,20,21 ; rm output.libpcap.txt ');   	
 		}
 	else
 		{return __("Not installed", true);} 
@@ -237,7 +237,7 @@ class XplicoComponent extends Object
     }
 
     function getPythonVersion() {
-        return exec ('/usr/bin/python3 --version 2> /tmp/output.python.version.txt ; /bin/cat /tmp/output.python.version.txt | /usr/bin/cut -b 8,9,10,11,12,13; /bin/rm /tmp/output.python.version.txt;');
+        return exec ('/usr/bin/python3 --version 2> /tmp/output.python.version.txt ; cat /tmp/output.python.version.txt | cut -b 8,9,10,11,12,13; rm /tmp/output.python.version.txt;');
     }
 
     function getSoxVersion() {
