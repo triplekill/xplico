@@ -93,18 +93,15 @@ CFLAGS += -DXPL_REALTIME=1
 endif
 
 # verify GeoIP library source code
-GEOIP_V = $(ROOT_DIR)/third-party/GeoIP-1.6.0
-GEOIP_LIB =$(GEOIP_V)/libGeoIP/.libs/libGeoIP.a
+GEOIP_LIB =`pkg-config --libs geoip`
 ifeq ($(wildcard $(GEOIP_LIB)), $(GEOIP_LIB))
 XPL_LIB += $(GEOIP_LIB)
 CFLAGS += -DGEOIP_LIBRARY=1
-INCLUDE_DIR += -I$(GEOIP_V)/libGeoIP/
+INCLUDE_DIR += `pkg-config --cflags geoip`
 else
 CFLAGS += -DGEOIP_LIBRARY=0
 endif
 
-# JSON
-JSON_PATH = $(ROOT_DIR)/third-party/json-c
 
 # main cflags
 MCFLAGS = $(CFLAGS) -DLOG_COMPONENT=-1
@@ -113,7 +110,7 @@ MCFLAGS = $(CFLAGS) -DLOG_COMPONENT=-1
 # To make it visible
 export CC CCPP ROOT_DIR CFLAGS LDFLAGS INCLUDE_DIR INSTALL_DIR GEOIP_LIB
 
-all: thirdparty subdir xplico mdl check_version
+all: subdir xplico mdl check_version
 
 help:
 	@echo "Flags:"
@@ -136,15 +133,6 @@ ifndef VER
 VER = $(shell date +%Y_%m_%d)
 endif
 
-thirdparty:
-ifneq ($(wildcard $(JSON_PATH)/Makefile), $(JSON_PATH)/Makefile)
-	cd $(JSON_PATH); ./autogen.sh; ./configure
-endif
-	$(MAKE) -C $(JSON_PATH)
-ifneq ($(wildcard $(GEOIP_V)/Makefile), $(GEOIP_V)/Makefile)
-	cd $(GEOIP_V); ./configure
-endif
-	$(MAKE) -C $(GEOIP_V)
 
 xplico: $(SRC:.c=.o) $(XPL_LIB)
 	$(CC) $(MCFLAGS) -o $@ $(SRC:.c=.o) $(XPL_LIB) $(LDFLAGS)
@@ -169,12 +157,6 @@ clean: reset
 	@for dir in $(SUBDIRS) ; do $(MAKE) -C $$dir clean; done
 	rm -f xplico *.o *~ *.log .depend val.* *.expand
 	rm -rf $(MODULE_PATH)
-ifeq ($(wildcard $(JSON_PATH)/Makefile), $(JSON_PATH)/Makefile)
-	$(MAKE) -C $(JSON_PATH) clean distclean
-endif
-ifeq ($(wildcard $(GEOIP_V)/Makefile), $(GEOIP_V)/Makefile)
-	$(MAKE) -C $(GEOIP_V) clean distclean
-endif
 	rm -rf debian/xplico*
 	rm -f webmail/*/*~
 	rm -f */*~
